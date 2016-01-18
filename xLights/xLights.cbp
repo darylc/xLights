@@ -183,10 +183,10 @@
 					<Add option="-Wl,--large-address-aware" />
 					<Add library="libwxmsw30ud.a" />
 					<Add library="libwxmsw30ud_gl.a" />
-					<Add library="../lib/windows/DbgHelp.Lib" />
-					<Add library="../lib/windows/ImageHlp.Lib" />
-					<Add library="../lib/windows/libmpg123-0.lib" />
-					<Add library="../lib/windows/glut32.lib" />
+					<Add library="..\lib\windows\DbgHelp.Lib" />
+					<Add library="..\lib\windows\ImageHlp.Lib" />
+					<Add library="..\lib\windows\libmpg123-0.lib" />
+					<Add library="..\lib\windows\glut32.lib" />
 				</Linker>
 				<ExtraCommands>
 					<Add after='..\bin\deploy.bat  &quot;$(TARGET_OUTPUT_FILE)&quot;' />
@@ -232,10 +232,10 @@
 					<Add option="-Wl,--large-address-aware" />
 					<Add library="libwxmsw30u.a" />
 					<Add library="libwxmsw30u_gl.a" />
-					<Add library="../lib/windows/DbgHelp.Lib" />
-					<Add library="../lib/windows/ImageHlp.Lib" />
-					<Add library="../lib/windows/libmpg123-0.lib" />
-					<Add library="../lib/windows/glut32.lib" />
+					<Add library="..\lib\windows\DbgHelp.Lib" />
+					<Add library="..\lib\windows\ImageHlp.Lib" />
+					<Add library="..\lib\windows\libmpg123-0.lib" />
+					<Add library="..\lib\windows\glut32.lib" />
 					<Add directory="lib/windows" />
 					<Add directory="../lib/windows" />
 				</Linker>
@@ -333,10 +333,10 @@
 					<Add option="-Wl,-Map=../bin/xLights.map" />
 					<Add library="libwxmsw30u.a" />
 					<Add library="libwxmsw30u_gl.a" />
-					<Add library="../lib/windows/DbgHelp.Lib" />
-					<Add library="../lib/windows/ImageHlp.Lib" />
-					<Add library="../lib/windows/libmpg123-0.lib" />
-					<Add library="../lib/windows/glut32.lib" />
+					<Add library="..\lib\windows\DbgHelp.Lib" />
+					<Add library="..\lib\windows\ImageHlp.Lib" />
+					<Add library="..\lib\windows\libmpg123-0.lib" />
+					<Add library="..\lib\windows\glut32.lib" />
 				</Linker>
 				<ExtraCommands>
 					<Add after='..\bin\deploy.bat  &quot;$(TARGET_OUTPUT_FILE)&quot;' />
@@ -378,9 +378,9 @@
 					<Add option="-Wl,-Map=../bin/xLights.map" />
 					<Add library="libwxmsw30ud.a" />
 					<Add library="libwxmsw30ud_gl.a" />
-					<Add library="../lib/windows/DbgHelp.Lib" />
-					<Add library="../lib/windows/ImageHlp.Lib" />
-					<Add library="../lib/windows/libmpg123-0.lib" />
+					<Add library="..\lib\windows\DbgHelp.Lib" />
+					<Add library="..\lib\windows\ImageHlp.Lib" />
+					<Add library="..\lib\windows\libmpg123-0.lib" />
 				</Linker>
 				<ExtraCommands>
 					<Add after='..\bin\deploy.bat  &quot;$(TARGET_OUTPUT_FILE)&quot;' />
@@ -681,6 +681,10 @@
 		<Unit filename="effects/StrobeEffect.h" />
 		<Unit filename="effects/StrobePanel.cpp" />
 		<Unit filename="effects/StrobePanel.h" />
+		<Unit filename="effects/TendrilEffect.cpp" />
+		<Unit filename="effects/TendrilEffect.h" />
+		<Unit filename="effects/TendrilPanel.cpp" />
+		<Unit filename="effects/TendrilPanel.h" />
 		<Unit filename="effects/TextEffect.cpp" />
 		<Unit filename="effects/TextEffect.h" />
 		<Unit filename="effects/TextPanel.cpp" />
@@ -847,6 +851,7 @@
 		<Unit filename="wxsmith/SpirographPanel.wxs" />
 		<Unit filename="wxsmith/StrobePanel.wxs" />
 		<Unit filename="wxsmith/SuperStarImportDialog.wxs" />
+		<Unit filename="wxsmith/TendrilPanel.wxs" />
 		<Unit filename="wxsmith/TextPanel.wxs" />
 		<Unit filename="wxsmith/TimingPanel.wxs" />
 		<Unit filename="wxsmith/TopEffectsPanel.wxs" />
@@ -971,6 +976,7 @@
 					<wxPanel wxs="wxsmith/SpiralsPanel.wxs" src="effects/SpiralsPanel.cpp" hdr="effects/SpiralsPanel.h" fwddecl="1" i18n="1" name="SpiralsPanel" language="CPP" />
 					<wxPanel wxs="wxsmith/SpirographPanel.wxs" src="effects/SpirographPanel.cpp" hdr="effects/SpirographPanel.h" fwddecl="1" i18n="1" name="SpirographPanel" language="CPP" />
 					<wxPanel wxs="wxsmith/StrobePanel.wxs" src="effects/StrobePanel.cpp" hdr="effects/StrobePanel.h" fwddecl="1" i18n="1" name="StrobePanel" language="CPP" />
+					<wxPanel wxs="wxsmith/TendrilPanel.wxs" src="effects/TendrilPanel.cpp" hdr="effects/TendrilPanel.h" fwddecl="1" i18n="1" name="TendrilPanel" language="CPP" />
 					<wxPanel wxs="wxsmith/TextPanel.wxs" src="effects/TextPanel.cpp" hdr="effects/TextPanel.h" fwddecl="1" i18n="1" name="TextPanel" language="CPP" />
 					<wxPanel wxs="wxsmith/TreePanel.wxs" src="effects/TreePanel.cpp" hdr="effects/TreePanel.h" fwddecl="1" i18n="1" name="TreePanel" language="CPP" />
 					<wxPanel wxs="wxsmith/TwinklePanel.wxs" src="effects/TwinklePanel.cpp" hdr="effects/TwinklePanel.h" fwddecl="1" i18n="1" name="TwinklePanel" language="CPP" />
