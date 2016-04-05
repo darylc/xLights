@@ -93,7 +93,7 @@ void DimmingCurvePanel::render(wxPaintEvent& event) {
 
             DrawGLUtils::AddVertex(xpos, ypos, xlYELLOW);
         }
-        DrawGLUtils::End(GL_LINE_STRIP, true);
+        DrawGLUtils::End(GL_LINE_STRIP);
     }
 
     glFlush();

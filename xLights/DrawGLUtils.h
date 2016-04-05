@@ -6,8 +6,16 @@
 #include "wx/glcanvas.h"
 #include "Color.h"
 
+
+
 namespace DrawGLUtils
 {
+    class xlGLCacheInfo;
+    
+    xlGLCacheInfo *CreateCache();
+    void SetCurrentCache(xlGLCacheInfo *cache);
+    void DestroyCache(xlGLCacheInfo *cache);
+    
     class DisplayListItem {
     public:
         DisplayListItem() : valid(true), usage(GL_POINT), x(0.0), y(0.0) {};
@@ -54,7 +62,7 @@ namespace DrawGLUtils
     void AddRectAsTriangles(double x1, double y1,
                             double x2, double y2,
                             const xlColor &c, int transparency = 0);
-    void End(int type, bool reset = true);
+    void End(int type);
 
     void DrawLine(const xlColor &color, wxByte alpha,int x1, int y1,int x2, int y2,float width);
     void DrawRectangle(const xlColor &color, bool dashed, int x1, int y1,int x2, int y2);

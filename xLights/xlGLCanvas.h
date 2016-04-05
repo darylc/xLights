@@ -2,6 +2,7 @@
 #define XLGLCANVAS_H
 
 #include "wx/glcanvas.h"
+#include "DrawGLUtils.h"
 
 #ifndef __WXMSW__
 #define GL_CONTEXT_CLASS wxGLContext
@@ -22,8 +23,7 @@ class xlGLCanvas
         xlGLCanvas(wxWindow* parent, wxWindowID id, const wxPoint &pos=wxDefaultPosition,
                    const wxSize &size=wxDefaultSize,
                    long style=0,
-                   const wxString &name=wxPanelNameStr,
-                   bool allowRetina = true);
+                   const wxString &name=wxPanelNameStr);
         virtual ~xlGLCanvas();
 
         void SetCurrentGLContext();
@@ -51,6 +51,7 @@ class xlGLCanvas
 
     private:
         GL_CONTEXT_CLASS* m_context;
+        DrawGLUtils::xlGLCacheInfo *cache;
 };
 
 #endif // XLGLCANVAS_H

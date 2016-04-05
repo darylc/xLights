@@ -133,7 +133,7 @@ double xlTranslateToRetina(wxGLCanvas &win, double x);
 static const int GLARGS[] = {WX_GL_RGBA, WX_GL_DOUBLEBUFFER, WX_GL_DEPTH_SIZE, 16, 0};
 
 xlGLCanvas::xlGLCanvas(wxWindow* parent, wxWindowID id, const wxPoint &pos,
-                const wxSize &size, long style, const wxString &name, bool allowRetina)
+                const wxSize &size, long style, const wxString &name)
 #ifndef __WXMSW__
     :wxGLCanvas(parent, id, GLARGS, pos, size, wxFULL_REPAINT_ON_RESIZE | wxCLIP_CHILDREN | wxCLIP_SIBLINGS | style),
 #else
@@ -143,20 +143,26 @@ xlGLCanvas::xlGLCanvas(wxWindow* parent, wxWindowID id, const wxPoint &pos,
         mWindowHeight(0),
         mWindowResized(false),
         mIsInitialized(false),
-        m_context(new GL_CONTEXT_CLASS(this))
+        m_context(new GL_CONTEXT_CLASS(this)),
+        cache(nullptr)
 {
-    if (allowRetina) {
-        xlSetOpenGLRetina(*this);
-    }
+    xlSetOpenGLRetina(*this);
 }
 
 xlGLCanvas::~xlGLCanvas()
 {
+    if (cache != nullptr) {
+        DrawGLUtils::DestroyCache(cache);
+    }
     delete m_context;
 }
 
 void xlGLCanvas::SetCurrentGLContext() {
-     m_context->SetCurrent(*this);
+    m_context->SetCurrent(*this);
+    if (cache == nullptr) {
+        cache = DrawGLUtils::CreateCache();
+    }
+    DrawGLUtils::SetCurrentCache(cache);    
 }
 
 #ifdef __WXMSW__
