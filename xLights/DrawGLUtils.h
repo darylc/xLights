@@ -6,15 +6,39 @@
 #include "wx/glcanvas.h"
 #include "Color.h"
 
-
+class xlGLCanvas;
 
 namespace DrawGLUtils
 {
-    class xlGLCacheInfo;
+    class xlGLCacheInfo {
+    public:
+        xlGLCacheInfo() {};
+        virtual ~xlGLCacheInfo() {};
+        
+        virtual void addVertex(double x, double y, const xlColor &c) = 0;
+        virtual int vertexCount() = 0;
+        virtual void flush(int type) = 0;
+        virtual void ensureSize(int i) = 0;
+        
+        virtual void Ortho(int topleft_x, int topleft_y, int bottomright_x, int bottomright_y) = 0;
+        virtual void PushMatrix() = 0;
+        virtual void PopMatrix() = 0;
+        virtual void Translate(float x, float y, float z) = 0;
+        virtual void Rotate(float angle, float x, float y, float z) = 0;
+        virtual void Scale(float w, float h, float z) = 0;
+    };
     
     xlGLCacheInfo *CreateCache();
     void SetCurrentCache(xlGLCacheInfo *cache);
     void DestroyCache(xlGLCacheInfo *cache);
+    
+    void SetViewport(xlGLCanvas &win, int x1, int y1, int x2, int y2);
+    void PushMatrix();
+    void PopMatrix();
+    void Translate(float x, float y, float z);
+    void Rotate(float angle, float x, float y, float z);
+    void Scale(float w, float h, float z);
+    
     
     class DisplayListItem {
     public:

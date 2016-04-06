@@ -15,6 +15,9 @@
 #include "ModelPreview.h"
 #include "models/Model.h"
 
+#include "DrawGLUtils.h"
+
+
 BEGIN_EVENT_TABLE(ModelPreview, xlGLCanvas)
 EVT_MOTION(ModelPreview::mouseMoved)
 EVT_LEFT_DOWN(ModelPreview::mouseLeftDown)
@@ -107,14 +110,14 @@ void ModelPreview::keyPressed(wxKeyEvent& event) {}
 void ModelPreview::keyReleased(wxKeyEvent& event) {}
 
 ModelPreview::ModelPreview(wxPanel* parent, std::vector<Model*> &models, bool a, int styles)
-    : xlGLCanvas(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, styles, ""), PreviewModels(&models), allowSelected(a)
+    : xlGLCanvas(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, styles, "", true), PreviewModels(&models), allowSelected(a)
 {
     SetBackgroundStyle(wxBG_STYLE_CUSTOM);
     virtualWidth = 0;
     virtualHeight = 0;
 }
 ModelPreview::ModelPreview(wxPanel* parent)
-: xlGLCanvas(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize), PreviewModels(NULL), allowSelected(false)
+: xlGLCanvas(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, "", true), PreviewModels(NULL), allowSelected(false)
 {
     SetBackgroundStyle(wxBG_STYLE_CUSTOM);
     virtualWidth = 0;
@@ -126,14 +129,6 @@ ModelPreview::~ModelPreview()
 
 void ModelPreview::SetCanvasSize(int width,int height)
 {
-    /*
-    SetSize(width,height);
-    wxSize s;
-    s.SetWidth(width);
-    s.SetHeight(height);
-    SetMaxSize(s);
-    SetMinSize(s);
-     */
     SetVirtualCanvasSize(width, height);
 }
 void ModelPreview::SetVirtualCanvasSize(int width, int height) {
@@ -219,44 +214,30 @@ bool ModelPreview::StartDrawing(wxDouble pointSize)
         prepare2DViewport(0,0,mWindowWidth, mWindowHeight);
     }
     glPointSize(translateToBacking(mPointSize));
-    glPushMatrix();
+    DrawGLUtils::PushMatrix();
     // Rotate Axis and tranlate
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glRotatef(180,0,0,1);
-    glRotatef(180,0,1,0);
+    DrawGLUtils::Rotate(180,0,0,1);
+    DrawGLUtils::Rotate(180,0,1,0);
 
     currentPixelScaleFactor = 1.0;
     if (!allowSelected && virtualWidth > 0 && virtualHeight > 0
         && (virtualWidth != mWindowWidth || virtualHeight != mWindowHeight)) {
-        glTranslatef(0,-mWindowHeight,0);
+        DrawGLUtils::Translate(0,-mWindowHeight,0);
         double scaleh= double(mWindowHeight) / double(virtualHeight);
         double scalew = double(mWindowWidth) / double(virtualWidth);
-        glScalef(scalew, scaleh, 1.0);
+        DrawGLUtils::Scale(scalew, scaleh, 1.0);
 
         if (scalew < scaleh) {
             scaleh = scalew;
         }
         currentPixelScaleFactor = scaleh;
         glPointSize(calcPixelSize(mPointSize));
-        glColor3f(0.0, 0.0, 0.0);
-        glBegin(GL_QUADS);
-        glVertex2f(0, 0);
-        glVertex2f(virtualWidth, 0);
-        glVertex2f(virtualWidth, virtualHeight);
-        glVertex2f(0, virtualHeight);
-        glEnd();
+        DrawGLUtils::DrawFillRectangle(xlBLACK, 255, 0, 0, virtualWidth, virtualHeight);
     } else if (virtualWidth == 0 && virtualHeight == 0) {
-        glTranslatef(0, -mWindowHeight, 0);
+        DrawGLUtils::Translate(0, -mWindowHeight, 0);
     } else {
-        glTranslatef(0, -virtualHeight, 0);
-        glColor3f(0.0, 0.0, 0.0);
-        glBegin(GL_QUADS);
-        glVertex2f(0, 0);
-        glVertex2f(virtualWidth, 0);
-        glVertex2f(virtualWidth, virtualHeight);
-        glVertex2f(0, virtualHeight);
-        glEnd();
+        DrawGLUtils::Translate(0, -virtualHeight, 0);
+        DrawGLUtils::DrawFillRectangle(xlBLACK, 255, 0, 0, virtualWidth, virtualHeight);
     }
     if(mBackgroundImageExists)
     {
@@ -266,30 +247,30 @@ bool ModelPreview::StartDrawing(wxDouble pointSize)
            sprite = new xLightsDrawable(image);
         }
         float intensity = mBackgroundBrightness*.01;
-        glPushMatrix();
+        DrawGLUtils::PushMatrix();
         double scaleh= double(virtualHeight) / double(image->height);
         double scalew = double(virtualWidth) / double(image->width);
         if (scaleImage) {
-            glScalef(scalew, scaleh, 1.0);
+            DrawGLUtils::Scale(scalew, scaleh, 1.0);
         } else {
             if (scalew < scaleh) {
                 scaleh = scalew;
             }
-            glScalef(scaleh, scaleh, 1.0);
+            DrawGLUtils::Scale(scaleh, scaleh, 1.0);
         }
         
         glColor3f(intensity, intensity, intensity);
         glEnable(GL_TEXTURE_2D);   // textures
         sprite->render();
         glDisable(GL_TEXTURE_2D);   // textures
-        glPopMatrix();
+        DrawGLUtils::PopMatrix();
     }
     return true;
 }
 
 void ModelPreview::EndDrawing()
 {
-    glPopMatrix();
+    DrawGLUtils::PopMatrix();
     SwapBuffers();
     mIsDrawing = false;
 }

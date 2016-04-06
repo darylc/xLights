@@ -120,22 +120,16 @@ EVT_SIZE(xlGLCanvas::Resized)
 EVT_ERASE_BACKGROUND(xlGLCanvas::OnEraseBackGround)  // Override to do nothing on this event
 END_EVENT_TABLE()
 
-#ifdef __WXOSX__
-void xlSetOpenGLRetina(wxGLCanvas &win);
-void xlSetRetinaCanvasViewport(wxGLCanvas &win, int &x, int &y, int &x2, int&y2);
-double xlTranslateToRetina(wxGLCanvas &win, double x);
-#else
-#define xlSetOpenGLRetina(a)
-#define xlSetRetinaCanvasViewport(w,a,b,c,d)
-#define xlTranslateToRetina(a, x) x
-#endif
+#include "osxMacUtils.h"
 
 static const int GLARGS[] = {WX_GL_RGBA, WX_GL_DOUBLEBUFFER, WX_GL_DEPTH_SIZE, 16, 0};
+static const int CORE_GLARGS[] = {WX_GL_CORE_PROFILE, WX_GL_RGBA, WX_GL_DOUBLEBUFFER, WX_GL_DEPTH_SIZE, 16, 0}; // WX_GL_SAMPLE_BUFFERS, 1, WX_GL_SAMPLES, 8,  0};
 
 xlGLCanvas::xlGLCanvas(wxWindow* parent, wxWindowID id, const wxPoint &pos,
-                const wxSize &size, long style, const wxString &name)
+                       const wxSize &size, long style, const wxString &name,
+                       bool coreProfile)
 #ifndef __WXMSW__
-    :wxGLCanvas(parent, id, GLARGS, pos, size, wxFULL_REPAINT_ON_RESIZE | wxCLIP_CHILDREN | wxCLIP_SIBLINGS | style),
+    :wxGLCanvas(parent, id, coreProfile ? CORE_GLARGS : GLARGS, pos, size, wxFULL_REPAINT_ON_RESIZE | wxCLIP_CHILDREN | wxCLIP_SIBLINGS | style),
 #else
     :   wxWindow(parent, id, pos, size, wxFULL_REPAINT_ON_RESIZE | wxCLIP_CHILDREN | wxCLIP_SIBLINGS | style),
 #endif
@@ -184,20 +178,9 @@ double xlGLCanvas::translateToBacking(double x) {
 
 
 // Inits the OpenGL viewport for drawing in 2D.
-void xlGLCanvas::prepare2DViewport(int topleft_x, int topleft_y, int bottomrigth_x, int bottomrigth_y)
+void xlGLCanvas::prepare2DViewport(int topleft_x, int topleft_y, int bottomright_x, int bottomright_y)
 {
-    int x, y, x2, y2;
-    x = topleft_x;
-    y = topleft_y;
-    x2 = bottomrigth_x;
-    y2 =bottomrigth_y;
-    xlSetRetinaCanvasViewport(*this, x,y,x2,y2);
-    glViewport(x,y,x2-x,y2-y);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-
-    glOrtho(topleft_x, bottomrigth_x, bottomrigth_y, topleft_y, -1, 1);
-    glMatrixMode(GL_MODELVIEW);
+    DrawGLUtils::SetViewport(*this, topleft_x, topleft_y, bottomright_x, bottomright_y);
     mWindowResized = false;
 }
 

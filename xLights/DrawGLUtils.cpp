@@ -2,6 +2,7 @@
 
 #include "wx/wx.h"
 
+
 #ifdef __WXMAC__
  #include "OpenGL/glu.h"
  #include "OpenGL/gl.h"
@@ -18,22 +19,12 @@
 
 #include <wx/bitmap.h>
 #include "DrawGLUtils.h"
+#include "osxMacUtils.h"
 
 const double PI  =3.141592653589793238463;
 
 
 static DrawGLUtils::xlGLCacheInfo *currentCache;
-
-class DrawGLUtils::xlGLCacheInfo {
-public:
-    xlGLCacheInfo() {};
-    virtual ~xlGLCacheInfo() {};
-    
-    virtual void addVertex(double x, double y, const xlColor &c) = 0;
-    virtual int vertexCount() = 0;
-    virtual void flush(int type) = 0;
-    virtual void ensureSize(int i) = 0;
-};
 
 class OpenGL21Cache : public DrawGLUtils::xlGLCacheInfo {
 public:
@@ -48,7 +39,7 @@ public:
         delete [] vertices;
     };
     
-    virtual void addVertex(double x, double y, const xlColor &c) {
+    virtual void addVertex(double x, double y, const xlColor &c) override {
         ensureSize(1);
         vertices[curCount * 2] = x;
         vertices[curCount * 2 + 1] = y;
@@ -58,19 +49,7 @@ public:
         colors[curCount*4 + 3] = c.Alpha();
         curCount++;
     }
-    virtual void flush(int type) {
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_COLOR_ARRAY);
-        
-        glColorPointer(4, GL_UNSIGNED_BYTE, 0, colors);
-        glVertexPointer(2, GL_DOUBLE, 0, vertices);
-        glDrawArrays(type, 0, curCount);
-        
-        glDisableClientState(GL_VERTEX_ARRAY);
-        glDisableClientState(GL_COLOR_ARRAY);
-        curCount = 0;
-    }
-    virtual void ensureSize(int s) {
+    virtual void ensureSize(int s) override {
         int size = curCount + s;
         if (size > max) {
             unsigned char *tmp = new unsigned char[size * 4];
@@ -88,10 +67,50 @@ public:
             max = size;
         }
     }
-    virtual int vertexCount() {
+    virtual int vertexCount() override {
         return curCount;
     }
-private:
+    virtual void flush(int type) override {
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_COLOR_ARRAY);
+        
+        glColorPointer(4, GL_UNSIGNED_BYTE, 0, colors);
+        glVertexPointer(2, GL_DOUBLE, 0, vertices);
+        glDrawArrays(type, 0, curCount);
+        
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glDisableClientState(GL_COLOR_ARRAY);
+        curCount = 0;
+    }
+
+    
+    virtual void Ortho(int topleft_x, int topleft_y, int bottomright_x, int bottomright_y) override {
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        
+        glOrtho(topleft_x, bottomright_x, bottomright_y, topleft_y, -1, 1);
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+    }
+    
+    void PushMatrix() override {
+        glPushMatrix();
+    }
+    void PopMatrix() override {
+        glPopMatrix();
+    }
+    void Translate(float x, float y, float z) override {
+        glTranslatef(x, y, z);
+    }
+    void Rotate(float angle, float x, float y, float z) override {
+        glRotatef(angle, x, y, z);
+    }
+    void Scale(float w, float h, float z) override {
+        glScalef(w, h, z);
+    }
+
+
+protected:
     int max;
     unsigned char *colors;
     double *vertices;
@@ -100,22 +119,15 @@ private:
 
 
 
-
-
-
-
-
-
-
-
+DrawGLUtils::xlGLCacheInfo *Create31Cache();
 
 
 DrawGLUtils::xlGLCacheInfo *DrawGLUtils::CreateCache() {
     const GLubyte* str = glGetString(GL_VERSION);
-    if (str[0] == '3') {
-        
+    if (str[0] == '1' || str[0] == '2') {
+        return new OpenGL21Cache();
     }
-    return new OpenGL21Cache();
+    return Create31Cache();
 }
 void DrawGLUtils::SetCurrentCache(xlGLCacheInfo *c) {
     currentCache = c;
@@ -127,6 +139,33 @@ void DrawGLUtils::DestroyCache(xlGLCacheInfo *cache) {
     delete cache;
 }
 
+void DrawGLUtils::SetViewport(xlGLCanvas &win, int topleft_x, int topleft_y, int bottomright_x, int bottomright_y) {
+    int x, y, x2, y2;
+    x = topleft_x;
+    y = topleft_y;
+    x2 = bottomright_x;
+    y2 = bottomright_y;
+
+    xlSetRetinaCanvasViewport(win, x,y,x2,y2);
+    glViewport(x,y,x2-x,y2-y);
+    currentCache->Ortho(topleft_x, topleft_y, bottomright_x, bottomright_y);
+}
+
+void DrawGLUtils::PushMatrix() {
+    currentCache->PushMatrix();
+}
+void DrawGLUtils::PopMatrix() {
+    currentCache->PopMatrix();
+}
+void DrawGLUtils::Translate(float x, float y, float z) {
+    currentCache->Translate(x, y, z);
+}
+void DrawGLUtils::Rotate(float angle, float x, float y, float z) {
+    currentCache->Rotate(angle, x, y, z);
+}
+void DrawGLUtils::Scale(float w, float h, float z) {
+    currentCache->Scale(w, h, z);
+}
 
 
 

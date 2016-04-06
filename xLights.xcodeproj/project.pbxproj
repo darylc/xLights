@@ -27,6 +27,7 @@
 		671D814C1A6723CF005819EA /* EffectDropTarget.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 671D814A1A6723CF005819EA /* EffectDropTarget.cpp */; };
 		671FD6301BD72014003C2E33 /* ResizeImageDialog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 671FD62E1BD72014003C2E33 /* ResizeImageDialog.cpp */; };
 		67229EDE1C95DDF000D34024 /* TestDialog.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 67229EDD1C95DDF000D34024 /* TestDialog.cpp */; };
+		67276C481CB424B300A245CA /* DrawGLUtils31.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 67276C471CB424B300A245CA /* DrawGLUtils31.cpp */; };
 		672BD4F41C207D2E008F8B36 /* libwx_baseu_xml-3.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 672BD4E41C207D2E008F8B36 /* libwx_baseu_xml-3.1.dylib */; };
 		672BD4F51C207D2E008F8B36 /* libwx_osx_cocoau_aui-3.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 672BD4E51C207D2E008F8B36 /* libwx_osx_cocoau_aui-3.1.dylib */; };
 		672BD4F61C207D2E008F8B36 /* libwx_osx_cocoau_gl-3.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 672BD4E61C207D2E008F8B36 /* libwx_osx_cocoau_gl-3.1.dylib */; };
@@ -345,6 +346,7 @@
 		671FD62F1BD72014003C2E33 /* ResizeImageDialog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ResizeImageDialog.h; sourceTree = "<group>"; };
 		67229EDC1C95DDF000D34024 /* TestDialog.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TestDialog.h; sourceTree = "<group>"; };
 		67229EDD1C95DDF000D34024 /* TestDialog.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TestDialog.cpp; sourceTree = "<group>"; };
+		67276C471CB424B300A245CA /* DrawGLUtils31.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DrawGLUtils31.cpp; sourceTree = "<group>"; };
 		672BD4E41C207D2E008F8B36 /* libwx_baseu_xml-3.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libwx_baseu_xml-3.1.dylib"; path = "/opt/local/libdbg/libwx_baseu_xml-3.1.dylib"; sourceTree = "<group>"; };
 		672BD4E51C207D2E008F8B36 /* libwx_osx_cocoau_aui-3.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libwx_osx_cocoau_aui-3.1.dylib"; path = "/opt/local/libdbg/libwx_osx_cocoau_aui-3.1.dylib"; sourceTree = "<group>"; };
 		672BD4E61C207D2E008F8B36 /* libwx_osx_cocoau_gl-3.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libwx_osx_cocoau_gl-3.1.dylib"; path = "/opt/local/libdbg/libwx_osx_cocoau_gl-3.1.dylib"; sourceTree = "<group>"; };
@@ -1297,6 +1299,7 @@
 				67B845001A9C0E7500564051 /* DisplayElementsPanel.cpp */,
 				671D81491A6723CF005819EA /* DragEffectBitmapButton.cpp */,
 				67A260EC1AB71EE3006B140D /* DrawGLUtils.cpp */,
+				67276C471CB424B300A245CA /* DrawGLUtils31.cpp */,
 				67A619C417B51C0F008E95BB /* E131Dialog.cpp */,
 				6778F3E31A601CA7008C2086 /* Effect.cpp */,
 				675DE2551B53381800A9BB44 /* EffectAssist.cpp */,
@@ -1665,6 +1668,7 @@
 				67BA42A71C93B78500D17518 /* StartChannelDialog.cpp in Sources */,
 				67B2CFEB1C3A186A003C17CA /* LifeEffect.cpp in Sources */,
 				67623E731AD2BF3F0022667B /* BitmapCache.cpp in Sources */,
+				67276C481CB424B300A245CA /* DrawGLUtils31.cpp in Sources */,
 				675DE2671B53381800A9BB44 /* EffectAssist.cpp in Sources */,
 				67B2CF951C39D98A003C17CA /* CirclesEffect.cpp in Sources */,
 				67DAFDE11CA1A63C004B3237 /* Options.cpp in Sources */,
