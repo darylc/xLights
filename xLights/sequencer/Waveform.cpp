@@ -268,8 +268,6 @@ void Waveform::renderGL( )
 	{
 		DrawWaveView(views[mCurrentWaveView]);
 	}
-
-    glFlush();
     SwapBuffers();
 }
 

@@ -246,7 +246,6 @@ bool ModelPreview::StartDrawing(wxDouble pointSize)
            image = new Image(mBackgroundImage);
            sprite = new xLightsDrawable(image);
         }
-        float intensity = mBackgroundBrightness*.01;
         DrawGLUtils::PushMatrix();
         double scaleh= double(virtualHeight) / double(image->height);
         double scalew = double(virtualWidth) / double(image->width);
@@ -258,12 +257,14 @@ bool ModelPreview::StartDrawing(wxDouble pointSize)
             }
             DrawGLUtils::Scale(scaleh, scaleh, 1.0);
         }
-        
-        glColor3f(intensity, intensity, intensity);
-        glEnable(GL_TEXTURE_2D);   // textures
         sprite->render();
-        glDisable(GL_TEXTURE_2D);   // textures
         DrawGLUtils::PopMatrix();
+        
+        if (mBackgroundBrightness < 100) {
+            int b = (100 - mBackgroundBrightness) * 255;
+            b /= 100;
+            DrawGLUtils::DrawFillRectangle(xlBLACK, b, 0, 0, virtualWidth, virtualHeight);
+        }
     }
     return true;
 }

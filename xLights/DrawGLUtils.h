@@ -17,7 +17,7 @@ namespace DrawGLUtils
         
         virtual void addVertex(double x, double y, const xlColor &c) = 0;
         virtual int vertexCount() = 0;
-        virtual void flush(int type) = 0;
+        virtual void flush(int type, int enableCapability = 0) = 0;
         virtual void ensureSize(int i) = 0;
         
         virtual void Ortho(int topleft_x, int topleft_y, int bottomright_x, int bottomright_y) = 0;
@@ -26,6 +26,10 @@ namespace DrawGLUtils
         virtual void Translate(float x, float y, float z) = 0;
         virtual void Rotate(float angle, float x, float y, float z) = 0;
         virtual void Scale(float w, float h, float z) = 0;
+        virtual void DrawTexture(GLuint* texture,
+                                 float x, float y, float x2, float y2,
+                                 float tx = 0.0, float ty = 0.0, float tx2 = 1.0, float ty2 = 1.0) = 0;
+
     };
     
     xlGLCacheInfo *CreateCache();
@@ -86,7 +90,7 @@ namespace DrawGLUtils
     void AddRectAsTriangles(double x1, double y1,
                             double x2, double y2,
                             const xlColor &c, int transparency = 0);
-    void End(int type);
+    void End(int type, int enableCapability = 0);
 
     void DrawLine(const xlColor &color, wxByte alpha,int x1, int y1,int x2, int y2,float width);
     void DrawRectangle(const xlColor &color, bool dashed, int x1, int y1,int x2, int y2);
@@ -98,7 +102,10 @@ namespace DrawGLUtils
                                const wxBitmap &bmp32,
                                const wxBitmap &bmp16,
                                GLuint* texture);
-    void DrawTexture(GLuint* texture,double x, double y, double x2, double y2);
+    void DrawTexture(GLuint* texture,
+                     float x, float y, float x2, float y2,
+                     float tx = 0.0, float ty = 0.0, float tx2 = 1.0, float ty2 = 1.0);
+    
     void UpdateTexturePixel(GLuint* texture,double x, double y, xlColor& color, bool hasAlpha);
 
     void DrawRectangleArray(double y1, double y2, double x, std::vector<double> &xs, std::vector<xlColor> & colors, bool flush = true);

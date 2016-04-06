@@ -66,7 +66,7 @@ const long EffectsGrid::ID_GRID_MNU_BREAKDOWN_WORDS = wxNewId();
 
 EffectsGrid::EffectsGrid(MainSequencer* parent, wxWindowID id, const wxPoint &pos, const wxSize &size,
                        long style, const wxString &name)
-    :xlGLCanvas(parent, id, pos, size, wxFULL_REPAINT_ON_RESIZE | wxCLIP_CHILDREN | wxCLIP_SIBLINGS)
+    :xlGLCanvas(parent, id, pos, size, wxFULL_REPAINT_ON_RESIZE | wxCLIP_CHILDREN | wxCLIP_SIBLINGS, "", false)
 {
     mParent = parent;
     mDragging = false;
@@ -2152,15 +2152,9 @@ void EffectsGrid::InitializeGLCanvas()
 {
     if(!IsShownOnScreen() || xlights == nullptr) return;
     SetCurrentGLContext();
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f); // Black Background
-    glDisable(GL_TEXTURE_2D);   // textures
-    glDisable(GL_COLOR_MATERIAL);
-    glDisable(GL_BLEND);
-    glDisable(GL_DEPTH_TEST);
-    glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Black Background
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     prepare2DViewport(0,0,mWindowWidth, mWindowHeight);
-    glLoadIdentity();
     CreateEffectIconTextures();
     mIsInitialized = true;
 }
@@ -2521,6 +2515,7 @@ void EffectsGrid::DrawTimingEffects(int row)
 
 void EffectsGrid::render( wxPaintEvent& evt )
 {
+    wxClientDC dc(this);
     Draw();
 }
 
@@ -2532,7 +2527,6 @@ void EffectsGrid::Draw()
     SetCurrentGLContext();
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    wxClientDC(this);
     if( mWindowResized )
     {
         prepare2DViewport(0,0,mWindowWidth, mWindowHeight);
@@ -2559,7 +2553,6 @@ void EffectsGrid::Draw()
         DrawGLUtils::DrawRectangle(xlYELLOW,true,mDragStartX,mDragStartY,mDragEndX,mDragEndY);
     }
 
-    glFlush();
     SwapBuffers();
 }
 

@@ -70,7 +70,10 @@ public:
     virtual int vertexCount() override {
         return curCount;
     }
-    virtual void flush(int type) override {
+    virtual void flush(int type, int enableCapability) override {
+        if (enableCapability != 0) {
+            glEnable(enableCapability);
+        }
         glEnableClientState(GL_VERTEX_ARRAY);
         glEnableClientState(GL_COLOR_ARRAY);
         
@@ -81,6 +84,9 @@ public:
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableClientState(GL_COLOR_ARRAY);
         curCount = 0;
+        if (enableCapability != 0) {
+            glDisable(enableCapability);
+        }
     }
 
     
@@ -109,6 +115,29 @@ public:
         glScalef(w, h, z);
     }
 
+    void DrawTexture(GLuint* texture, float x, float y, float x2, float y2,
+                     float tx, float ty, float tx2, float ty2) override {
+        glEnable(GL_TEXTURE_2D);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glBindTexture(GL_TEXTURE_2D,*texture);
+        glPushMatrix();
+        glBegin(GL_QUADS);
+        glTexCoord2f(tx, ty);
+        
+        glVertex2f(x-0.4, y);
+        
+        glTexCoord2f(tx2, ty);
+        glVertex2f(x2-0.4,y);
+        
+        glTexCoord2f(tx2, ty2);
+        glVertex2f(x2-0.4,y2);
+        
+        glTexCoord2f(tx, ty2);
+        glVertex2f(x-0.4,y2);
+        glEnd();
+        glPopMatrix();
+        glDisable(GL_TEXTURE_2D);
+    }
 
 protected:
     int max;
@@ -223,8 +252,8 @@ void DrawGLUtils::AddRect(double x1, double y1,
     currentCache->addVertex(x2, y1, color);
 }
 
-void DrawGLUtils::End(int type) {
-    currentCache->flush(type);
+void DrawGLUtils::End(int type, int enableCapability) {
+    currentCache->flush(type, enableCapability);
 }
 
 void DrawGLUtils::DrawPoint(const xlColor &color, double x, double y)
@@ -468,17 +497,6 @@ void DrawGLUtils::DrawDisplayList(double xOffset, double yOffset,
 }
 
 
-
-
-
-
-
-
-
-
-/*** -----------  Yet to be updated for OpenGL 3.1 ----------------- ****/
-
-
 static void addMipMap(GLuint* texture, const wxImage &l_Image, int &level) {
     if (l_Image.IsOk() == true)
     {
@@ -490,7 +508,6 @@ static void addMipMap(GLuint* texture, const wxImage &l_Image, int &level) {
         }
     }
 }
-
 
 void DrawGLUtils::CreateOrUpdateTexture(const wxBitmap &bmp48,
                                         const wxBitmap &bmp32,
@@ -511,29 +528,20 @@ void DrawGLUtils::CreateOrUpdateTexture(const wxBitmap &bmp48,
     addMipMap(texture, bmp16.ConvertToImage().Rescale(1, 1, wxIMAGE_QUALITY_HIGH), level);
 }
 
-void DrawGLUtils::DrawTexture(GLuint* texture,double x, double y, double x2, double y2)
+void DrawGLUtils::DrawTexture(GLuint* texture,
+                         float x, float y, float x2, float y2,
+                         float tx, float ty, float tx2, float ty2)
 {
-    glEnable(GL_TEXTURE_2D);
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glBindTexture(GL_TEXTURE_2D,*texture);
-    glPushMatrix();
-    glBegin(GL_QUADS);
-    glTexCoord2f(0, 0);
-    
-    glVertex2f(x-0.4, y);
-    
-    glTexCoord2f(1,0);
-    glVertex2f(x2-0.4,y);
-    
-    glTexCoord2f(1,1);
-    glVertex2f(x2-0.4,y2);
-    
-    glTexCoord2f(0,1);
-    glVertex2f(x-0.4,y2);
-    glEnd();
-    glPopMatrix();
-    glDisable(GL_TEXTURE_2D);
+    currentCache->DrawTexture(texture, x, y, x2, y2, tx, ty, tx2, ty2);
 }
+
+
+
+
+
+/*** -----------  Yet to be updated for OpenGL 3.1 ----------------- ****/
+
+
 
 void DrawGLUtils::UpdateTexturePixel(GLuint* texture,double x, double y, xlColor& color, bool hasAlpha)
 {
@@ -597,32 +605,31 @@ void DrawGLUtils::DrawStrokedText(double x, double y, float size, const wxString
     glEnable(GL_BLEND);
     glEnable(GL_LINE_SMOOTH);
     glLineWidth(factor * 0.9);
-    glPushMatrix();
+    DrawGLUtils::PushMatrix();
     glColor3f(0, 0, 0);
     glTranslatef(x, y, 0);
     glScalef(size / 150.0, - size / 150.0, 1.0);
     for (int x = 0; x  < text.length(); x++) {
         glutStrokeCharacter(GLUT_STROKE_ROMAN, text[x]);
     }
-    glPopMatrix();
+    DrawGLUtils::PopMatrix();
     glDisable(GL_BLEND);
     glDisable(GL_LINE_SMOOTH);
 }
 
 int DrawGLUtils::GetStrokedTextWidth(float size, const wxString &text) {
-    int ret = glutStrokeLength(GLUT_STROKE_ROMAN, text.c_str()) * size / 150;
-    return ret;
+    return glutStrokeLength(GLUT_STROKE_ROMAN, text.c_str()) * size / 150;
 }
 
 
 void DrawGLUtils::DrawText(double x, double y, void *glutBitmapFont, const wxString &text) {
-    glPushMatrix();
+    DrawGLUtils::PushMatrix();
     glColor3f(0, 0, 0);
     glRasterPos2f(x, y);
     for (int x = 0; x  < text.length(); x++) {
         glutBitmapCharacter(glutBitmapFont, text[x]);
     }
-    glPopMatrix();
+    DrawGLUtils:PopMatrix();
 }
 
 int DrawGLUtils::GetTextWidth(void *glutBitmapFont, const wxString &text)

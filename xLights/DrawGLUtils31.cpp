@@ -29,8 +29,8 @@ public:
 
     OpenGL31Cache() : matrix(nullptr) {
         max = 1024;
-        colors = new float[max * 4];
-        vertices = new float[max * 3];
+        colors = new uint8_t[max * 4];
+        vertices = new float[max * 2];
         curCount = 0;
         
         GLuint VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
@@ -39,14 +39,14 @@ public:
         int InfoLogLength;
         const char *VertexSourcePointer =
             "#version 330 core\n"
-            "layout(location = 0) in vec3 vertexPosition_modelspace;\n"
+            "layout(location = 0) in vec2 vertexPosition_modelspace;\n"
             "layout(location = 1) in vec4 vertexColor;\n"
             "layout(location = 2) in vec2 vertexUV;\n"
             "out vec4 fragmentColor;\n"
             "out vec2 UV;\n"
             "uniform mat4 MVP;\n"
             "void main(){\n"
-            "    gl_Position = MVP * vec4(vertexPosition_modelspace,1);"
+            "    gl_Position = MVP * vec4(vertexPosition_modelspace,0,1);"
             "    fragmentColor = vertexColor;\n"
             "    UV = vertexUV;\n"
             "}\n";
@@ -65,28 +65,21 @@ public:
         "in vec2 UV;\n"
         "in float radius;\n"
         "out vec4 color;\n"
-        "uniform sampler2D myTextureSampler;\n"
+        "uniform sampler2D tex;\n"
         "uniform int RenderType;\n"
         "void main(){\n"
         "    if (RenderType == -1) {\n"
-        "        color = texture(myTextureSampler, UV);\n"
+        "        color = texture(tex, UV);\n"
         "    } else if (RenderType == 0) {\n"
         "        color = fragmentColor;\n"
         "    } else {\n"
         "        vec2 dv = abs(gl_PointCoord - vec2(0.5, 0.5));\n "
         "        float dist = distance(dv, vec2(0,0));\n"
-        "        float alpha = smoothstep(0.5, 0.35, dist);\n"
-        "        color = vec4(fragmentColor.x, fragmentColor.y, fragmentColor.z, alpha);\n"
+        "        float alpha = smoothstep(0.25, 0.6, dist);\n"
+        "        color = vec4(fragmentColor.x, fragmentColor.y, fragmentColor.z, 1.0 - alpha);\n"
         "    }\n"
         "}\n";
-        
-        
-        /*
-         "        float dist = distance(gl_FragCoord.xy, fPosition);\n"
-         "        float delta = fwidth(dist);\n"
-         "        float alpha = smoothstep(0.45 - delta, 0.45, dist);\n"
-         "        color = mix(fragmentColor, vec4(0.0), alpha);\n"
-         */
+
         
         glShaderSource(FragmentShaderID, 1, &FragmentSourcePointer , NULL);
         glCompileShader(FragmentShaderID);
@@ -120,9 +113,37 @@ public:
         glBindVertexArray(VertexArrayID);
         glGenBuffers(1, &vBufferId);
         glGenBuffers(1, &cBufferId);
+        glGenBuffers(1, &tBufferId);
         MatrixID = glGetUniformLocation(ProgramID, "MVP");
         TextureID = glGetUniformLocation(ProgramID, "myTextureSampler");
         RenderTypeID = glGetUniformLocation(ProgramID, "RenderType");
+        glUniform1i(glGetUniformLocation(ProgramID, "tex"), 0);
+        
+        glEnableVertexAttribArray(0);
+        glEnableVertexAttribArray(1);
+
+        
+        glBindBuffer(GL_ARRAY_BUFFER, vBufferId);
+        glVertexAttribPointer(
+                              0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+                              2,                  // size
+                              GL_FLOAT,           // type
+                              GL_FALSE,           // normalized?
+                              0,                  // stride
+                              (void*)0            // array buffer offset
+                              );
+        
+        // 2nd attribute buffer : colors
+        glEnableVertexAttribArray(1);
+        glBindBuffer(GL_ARRAY_BUFFER, cBufferId);
+        glVertexAttribPointer(1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
+                              GL_BGRA,                                // size
+                              GL_UNSIGNED_BYTE,                         // type
+                              GL_TRUE,                         // normalized?
+                              0,                                // stride
+                              (void*)0                          // array buffer offset
+                              );
+
     }
     ~OpenGL31Cache() {
         if (matrix) {
@@ -133,6 +154,7 @@ public:
             matrixStack.pop();
         }
         if (ProgramID != 0) {
+            glDeleteBuffers(1, &tBufferId);
             glDeleteBuffers(1, &vBufferId);
             glDeleteBuffers(1, &cBufferId);
             glDeleteVertexArrays(1, &VertexArrayID);
@@ -143,26 +165,27 @@ public:
     }
     virtual void addVertex(double x, double y, const xlColor &c) override {
         ensureSize(1);
-        vertices[curCount * 3] = x;
-        vertices[curCount * 3 + 1] = y;
-        vertices[curCount * 3 + 2] = 0.0;
-        colors[curCount*4] = ((float)c.Red())/255.0;
-        colors[curCount*4 + 1] = ((float)c.Green())/255.0;
-        colors[curCount*4 + 2] = ((float)c.Blue())/255.0;
-        colors[curCount*4 + 3] = ((float)c.Alpha())/255.0;
+        vertices[curCount * 2] = x;
+        vertices[curCount * 2 + 1] = y;
+        
+        //BGRA format is fastest
+        colors[curCount*4] = c.Blue();
+        colors[curCount*4 + 1] = c.Green();
+        colors[curCount*4 + 2] = c.Red();
+        colors[curCount*4 + 3] = c.Alpha();
         curCount++;
     }
     virtual void ensureSize(int s) override {
         int size = curCount + s;
         if (size > max) {
-            float *tmp = new float[size * 4];
+            uint8_t *tmp = new uint8_t[size * 4];
             for (int x = 0; x < (max*4); x++) {
                 tmp[x] = colors[x];
             }
             delete [] colors;
             colors = tmp;
-            float *tmpf = new float[size * 3];
-            for (int x = 0; x < (max*3); x++) {
+            float *tmpf = new float[size * 2];
+            for (int x = 0; x < (max*2); x++) {
                 tmpf[x] = vertices[x];
             }
             delete [] vertices;
@@ -174,44 +197,70 @@ public:
         return curCount;
     }
     
-    void flush(int type) override {
-        
+    void flush(int type, int enableCapability) override {
         glBindBuffer(GL_ARRAY_BUFFER, vBufferId);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*curCount*3, vertices, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*curCount*2, vertices, GL_STATIC_DRAW);
+
         glBindBuffer(GL_ARRAY_BUFFER, cBufferId);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*curCount*4, colors, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(GLubyte)*curCount*4, colors, GL_STATIC_DRAW);
+        
+        float ps;
+        if (type == GL_POINTS && enableCapability == 0x0B10) {
+            //POINT_SMOOTH, removed in OpenGL3.x
+            glGetFloatv(GL_POINT_SIZE, &ps);
+            glPointSize(ps + 1.0); //need a little larger for the blending
+            glUniform1i(RenderTypeID, 1);
+        } else {
+            if (enableCapability > 0) {
+                glEnable(enableCapability);
+            } else {
+                glUniform1i(RenderTypeID, enableCapability);
+            }
+        }
+        glDrawArrays(type, 0, curCount);
+        if (type == GL_POINTS && enableCapability == 0x0B10) {
+            glPointSize(ps);
+        } else if (enableCapability > 0) {
+            glDisable(enableCapability);
+        }
+        curCount = 0;
+    }
+    
+    void DrawTexture(GLuint* texture, float x, float y, float x2, float y2,
+                     float tx, float ty, float tx2, float ty2) override {
+        addVertex(x - 0.4, y, xlBLACK);
+        addVertex(x - 0.4, y2, xlBLACK);
+        addVertex(x2 - 0.4, y2, xlBLACK);
+        addVertex(x2 - 0.4, y2, xlBLACK);
+        addVertex(x2 - 0.4, y, xlBLACK);
+        addVertex(x - 0.4, y, xlBLACK);
+        
+        float textureVert[12] {
+            tx, ty,
+            tx, ty2,
+            tx2, ty2,
+            tx2, ty2,
+            tx2, ty,
+            tx, ty
+        };
+        glActiveTexture(GL_TEXTURE0); //switch to texture image unit 0
+        glBindTexture(GL_TEXTURE_2D, *texture);
         
         // 1rst attribute buffer : vertices
-        glEnableVertexAttribArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, vBufferId);
-        glVertexAttribPointer(
-                              0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
-                              3,                  // size
+        glEnableVertexAttribArray(2);
+        glBindBuffer(GL_ARRAY_BUFFER, tBufferId);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*12, textureVert, GL_STATIC_DRAW);
+        glVertexAttribPointer(2,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+                              2,                  // size
                               GL_FLOAT,           // type
                               GL_FALSE,           // normalized?
                               0,                  // stride
                               (void*)0            // array buffer offset
                               );
-        
-        // 2nd attribute buffer : colors
-        glEnableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, cBufferId);
-        glVertexAttribPointer(1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
-                              4,                                // size
-                              GL_FLOAT,                 // type
-                              GL_FALSE,                         // normalized?
-                              0,                                // stride
-                              (void*)0                          // array buffer offset
-                              );
-
-        glUniform1i(RenderTypeID, type == GL_POINTS ? 1 : 0);
-        glDrawArrays(type, 0, curCount);
-
-        glDisableVertexAttribArray(0);
-        glDisableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        curCount = 0;
+        flush(GL_TRIANGLES, -1);
+        glDisableVertexAttribArray(2);
     }
+    
     void Ortho(int topleft_x, int topleft_y, int bottomright_x, int bottomright_y) override {
         if (matrix) {
             delete matrix;
@@ -273,7 +322,7 @@ public:
 
 protected:
     int max;
-    float *colors;
+    uint8_t *colors;
     float *vertices;
     int curCount;
 
@@ -284,6 +333,7 @@ protected:
     GLuint ProgramID;
     GLuint vBufferId;
     GLuint cBufferId;
+    GLuint tBufferId;
     GLuint VertexArrayID;
 
     std::stack<glm::mat4*> matrixStack;
