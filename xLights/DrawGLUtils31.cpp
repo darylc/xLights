@@ -11,9 +11,14 @@
 #include "OpenGL/glu.h"
 #include "GLUT/glut.h"
 #else
+
+#include "wx/wx.h"
+
 #ifdef _MSC_VER
 #include "GL/glut.h"
 #else
+#define GL_GLEXT_PROTOTYPES
+#include <GL/glcorearb.h>
 #include <GL/glu.h>
 #include <GL/gl.h>
 #include <GL/glut.h>
@@ -23,16 +28,20 @@
 #include <DrawGLUtils.h>
 #include <stack>
 
+
+#ifdef __WXMAC__
+
 class OpenGL31Cache : public DrawGLUtils::xlGLCacheInfo {
 public:
 
 
-    OpenGL31Cache() : matrix(nullptr) {
+    OpenGL31Cache() : matrix(nullptr), colors(4), vertices(2), textures(1) {
         max = 1024;
-        colors = new uint8_t[max * 4];
-        vertices = new float[max * 2];
+        superMax = 1024;
+        //colors = new uint8_t[max * 4];
+        //vertices = new float[max * 2];
         curCount = 0;
-        
+
         GLuint VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
         GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
         GLint Result = GL_FALSE;
@@ -52,38 +61,39 @@ public:
             "}\n";
         glShaderSource(VertexShaderID, 1, &VertexSourcePointer , NULL);
         glCompileShader(VertexShaderID);
-        
+
         glGetShaderiv(VertexShaderID, GL_COMPILE_STATUS, &Result);
         glGetShaderiv(VertexShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
         if ( InfoLogLength > 0 ) {
             std::vector<char> VertexShaderErrorMessage(InfoLogLength+1);
             glGetShaderInfoLog(VertexShaderID, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
         }
-        
-        char const * FragmentSourcePointer = "#version 330 core\n"
-        "in vec4 fragmentColor;\n"
-        "in vec2 UV;\n"
-        "in float radius;\n"
-        "out vec4 color;\n"
-        "uniform sampler2D tex;\n"
-        "uniform int RenderType;\n"
-        "void main(){\n"
-        "    if (RenderType == -1) {\n"
-        "        color = texture(tex, UV);\n"
-        "    } else if (RenderType == 0) {\n"
-        "        color = fragmentColor;\n"
-        "    } else {\n"
-        "        vec2 dv = abs(gl_PointCoord - vec2(0.5, 0.5));\n "
-        "        float dist = distance(dv, vec2(0,0));\n"
-        "        float alpha = smoothstep(0.25, 0.6, dist);\n"
-        "        color = vec4(fragmentColor.x, fragmentColor.y, fragmentColor.z, 1.0 - alpha);\n"
-        "    }\n"
-        "}\n";
 
-        
+        char const * FragmentSourcePointer =
+            "#version 330 core\n"
+            "in vec4 fragmentColor;\n"
+            "in vec2 UV;\n"
+            "in float radius;\n"
+            "out vec4 color;\n"
+            "uniform sampler2D tex;\n"
+            "uniform int RenderType;\n"
+            "void main(){\n"
+            "    if (RenderType == -1) {\n"
+            "        color = texture(tex, UV);\n"
+            "    } else if (RenderType == 0) {\n"
+            "        color = fragmentColor;\n"
+            "    } else {\n"
+            "        vec2 dv = abs(gl_PointCoord - vec2(0.5, 0.5));\n "
+            "        float dist = distance(dv, vec2(0,0));\n"
+            "        float alpha = smoothstep(0.25, 0.6, dist);\n"
+            "        color = vec4(fragmentColor.x, fragmentColor.y, fragmentColor.z, 1.0 - alpha);\n"
+            "    }\n"
+            "}\n";
+
+
         glShaderSource(FragmentShaderID, 1, &FragmentSourcePointer , NULL);
         glCompileShader(FragmentShaderID);
-        
+
         // Check Fragment Shader
         glGetShaderiv(FragmentShaderID, GL_COMPILE_STATUS, &Result);
         glGetShaderiv(FragmentShaderID, GL_INFO_LOG_LENGTH, &InfoLogLength);
@@ -91,11 +101,11 @@ public:
             std::vector<char> FragmentShaderErrorMessage(InfoLogLength+1);
             glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
         }
-        
+
         ProgramID = glCreateProgram();
         glAttachShader(ProgramID, VertexShaderID);
         glAttachShader(ProgramID, FragmentShaderID);
-        
+
         glLinkProgram(ProgramID);
         glGetProgramiv(ProgramID, GL_LINK_STATUS, &Result);
         glGetProgramiv(ProgramID, GL_INFO_LOG_LENGTH, &InfoLogLength);
@@ -108,22 +118,16 @@ public:
         glDeleteShader(VertexShaderID);
         glDeleteShader(FragmentShaderID);
         glUseProgram(ProgramID);
-        
+
         glGenVertexArrays(1, &VertexArrayID);
         glBindVertexArray(VertexArrayID);
-        glGenBuffers(1, &vBufferId);
-        glGenBuffers(1, &cBufferId);
-        glGenBuffers(1, &tBufferId);
         MatrixID = glGetUniformLocation(ProgramID, "MVP");
         TextureID = glGetUniformLocation(ProgramID, "myTextureSampler");
         RenderTypeID = glGetUniformLocation(ProgramID, "RenderType");
         glUniform1i(glGetUniformLocation(ProgramID, "tex"), 0);
-        
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
 
-        
-        glBindBuffer(GL_ARRAY_BUFFER, vBufferId);
+        glEnableVertexAttribArray(0);
+        vertices.Init(max);
         glVertexAttribPointer(
                               0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
                               2,                  // size
@@ -132,10 +136,10 @@ public:
                               0,                  // stride
                               (void*)0            // array buffer offset
                               );
-        
+
         // 2nd attribute buffer : colors
         glEnableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, cBufferId);
+        colors.Init(max);
         glVertexAttribPointer(1,                                // attribute. No particular reason for 1, but must match the layout in the shader.
                               GL_BGRA,                                // size
                               GL_UNSIGNED_BYTE,                         // type
@@ -144,6 +148,18 @@ public:
                               (void*)0                          // array buffer offset
                               );
 
+        glEnableVertexAttribArray(2);
+        textures.Init(12);
+        glVertexAttribPointer(
+                              2,                  // attribute. No particular reason for 2, but must match the layout in the shader.
+                              2,                  // size
+                              GL_FLOAT,           // type
+                              GL_FALSE,           // normalized?
+                              0,                  // stride
+                              (void*)0            // array buffer offset
+                              );
+        glDisableVertexAttribArray(2);
+        start = 0;
     }
     ~OpenGL31Cache() {
         if (matrix) {
@@ -154,20 +170,19 @@ public:
             matrixStack.pop();
         }
         if (ProgramID != 0) {
-            glDeleteBuffers(1, &tBufferId);
-            glDeleteBuffers(1, &vBufferId);
-            glDeleteBuffers(1, &cBufferId);
+            vertices.CleanUp();
+            colors.CleanUp();
+            textures.CleanUp();
+
             glDeleteVertexArrays(1, &VertexArrayID);
             glDeleteProgram(ProgramID);
         }
-        delete [] colors;
-        delete [] vertices;
     }
     virtual void addVertex(double x, double y, const xlColor &c) override {
         ensureSize(1);
         vertices[curCount * 2] = x;
         vertices[curCount * 2 + 1] = y;
-        
+
         //BGRA format is fastest
         colors[curCount*4] = c.Blue();
         colors[curCount*4 + 1] = c.Green();
@@ -178,32 +193,25 @@ public:
     virtual void ensureSize(int s) override {
         int size = curCount + s;
         if (size > max) {
-            uint8_t *tmp = new uint8_t[size * 4];
-            for (int x = 0; x < (max*4); x++) {
-                tmp[x] = colors[x];
+            superMax = std::max(superMax, size);
+            max = superMax;
+            vertices.Resize(start, curCount, max);
+            colors.Resize(start, curCount, max);
+            if (curCount) {
+                //so I can put a breakpoint
+                start = 0;
             }
-            delete [] colors;
-            colors = tmp;
-            float *tmpf = new float[size * 2];
-            for (int x = 0; x < (max*2); x++) {
-                tmpf[x] = vertices[x];
-            }
-            delete [] vertices;
-            vertices = tmpf;
-            max = size;
+            start = 0;
         }
     }
     virtual int vertexCount() override {
         return curCount;
     }
-    
-    void flush(int type, int enableCapability) override {
-        glBindBuffer(GL_ARRAY_BUFFER, vBufferId);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*curCount*2, vertices, GL_STATIC_DRAW);
 
-        glBindBuffer(GL_ARRAY_BUFFER, cBufferId);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(GLubyte)*curCount*4, colors, GL_STATIC_DRAW);
-        
+    void flush(int type, int enableCapability) override {
+        vertices.FlushAndUnmap(start, curCount);
+        colors.FlushAndUnmap(start, curCount);
+
         float ps;
         if (type == GL_POINTS && enableCapability == 0x0B10) {
             //POINT_SMOOTH, removed in OpenGL3.x
@@ -213,28 +221,75 @@ public:
         } else {
             if (enableCapability > 0) {
                 glEnable(enableCapability);
-            } else {
+            } else if (enableCapability != 0) {
                 glUniform1i(RenderTypeID, enableCapability);
             }
         }
-        glDrawArrays(type, 0, curCount);
+        glDrawArrays(type, start, curCount);
         if (type == GL_POINTS && enableCapability == 0x0B10) {
             glPointSize(ps);
+            glUniform1i(RenderTypeID, 0);
         } else if (enableCapability > 0) {
             glDisable(enableCapability);
+        } else if (enableCapability != 0) {
+            glUniform1i(RenderTypeID, 0);
+        }
+        start += curCount;
+        max -= curCount;
+        if (max < 64) {
+            max = superMax;
+            start = 0;
+            vertices.ReInit(max);
+            colors.ReInit(max);
+        } else {
+            vertices.Remap(start, max);
+            colors.Remap(start, max);
         }
         curCount = 0;
     }
-    
+
     void DrawTexture(GLuint* texture, float x, float y, float x2, float y2,
                      float tx, float ty, float tx2, float ty2) override {
+        if (start) {
+            vertices.FlushAndUnmap(start, curCount);
+            colors.FlushAndUnmap(start, curCount);
+        }
+        textures.FlushAndUnmap(0, 0);
+        
+        max = superMax;
+        start = 0;
+        curCount = 0;
+        
+        vertices.ReInit(max);
+        colors.ReInit(max);
+
         addVertex(x - 0.4, y, xlBLACK);
         addVertex(x - 0.4, y2, xlBLACK);
         addVertex(x2 - 0.4, y2, xlBLACK);
         addVertex(x2 - 0.4, y2, xlBLACK);
         addVertex(x2 - 0.4, y, xlBLACK);
         addVertex(x - 0.4, y, xlBLACK);
+
         
+        glActiveTexture(GL_TEXTURE0); //switch to texture image unit 0
+        glBindTexture(GL_TEXTURE_2D, *texture);
+
+        
+        glEnableVertexAttribArray(2);
+        textures.ReInit(12);
+        textures[0] = tx;
+        textures[1] = ty;
+        textures[2] = tx;
+        textures[3] = ty2;
+        textures[4] = tx2;
+        textures[5] = ty2;
+        textures[6] = tx2;
+        textures[7] = ty2;
+        textures[8] = tx2;
+        textures[9] = ty;
+        textures[10] = tx;
+        textures[11] = ty;
+        /*
         float textureVert[12] {
             tx, ty,
             tx, ty2,
@@ -243,24 +298,13 @@ public:
             tx2, ty,
             tx, ty
         };
-        glActiveTexture(GL_TEXTURE0); //switch to texture image unit 0
-        glBindTexture(GL_TEXTURE_2D, *texture);
-        
-        // 1rst attribute buffer : vertices
-        glEnableVertexAttribArray(2);
-        glBindBuffer(GL_ARRAY_BUFFER, tBufferId);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*12, textureVert, GL_STATIC_DRAW);
-        glVertexAttribPointer(2,                  // attribute. No particular reason for 0, but must match the layout in the shader.
-                              2,                  // size
-                              GL_FLOAT,           // type
-                              GL_FALSE,           // normalized?
-                              0,                  // stride
-                              (void*)0            // array buffer offset
-                              );
+         */
+
+        textures.FlushAndUnmap(0, 12);
         flush(GL_TRIANGLES, -1);
         glDisableVertexAttribArray(2);
     }
-    
+
     void Ortho(int topleft_x, int topleft_y, int bottomright_x, int bottomright_y) override {
         if (matrix) {
             delete matrix;
@@ -321,23 +365,129 @@ public:
 
 
 protected:
+    template <class T>
+    class xlGLArray {
+    public:
+        xlGLArray(int sz) : mapped(false), array(nullptr), id(-1), size(sz), sizePerUnit(sz * sizeof(T)) {};
+        ~xlGLArray() {
+            if (!mapped && array) {
+                delete [] array;
+            }
+        }
+        void Init(int max) {
+            glGenBuffers(1, &id);
+            ReInit(max);
+        }
+        void CleanUp() {
+            if (id != -1) {
+                glBindBuffer(GL_ARRAY_BUFFER, id);
+                if (mapped) {
+                    glUnmapBuffer(GL_ARRAY_BUFFER);
+                    mapped = false;
+                    array = nullptr;
+                }
+                glDeleteBuffers(1, &id);
+            }
+        }
+        
+        void FlushAndUnmap(int start, int count) {
+            glBindBuffer(GL_ARRAY_BUFFER, id);
+            if (mapped) {
+                glFlushMappedBufferRange(GL_ARRAY_BUFFER, 0 , count*sizePerUnit);
+                glUnmapBuffer(GL_ARRAY_BUFFER);
+                mapped = false;
+                array = nullptr;
+            } else {
+                glBufferData(id, count*sizePerUnit, array, GL_DYNAMIC_DRAW);
+                delete [] array;
+                mapped = false;
+                array = nullptr;
+            }
+        }
+        
+        void Remap(int start, int max) {
+            glBindBuffer(GL_ARRAY_BUFFER, id);
+            array = (T*)glMapBufferRange(GL_ARRAY_BUFFER, sizePerUnit*start, sizePerUnit*max,
+                                         GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+            if (array) {
+                mapped = true;
+            } else {
+                mapped = false;
+                array = new T[max * size];
+            }
+        }
+        
+        void ReInit(int max) {
+            glBindBuffer(GL_ARRAY_BUFFER, id);
+            glBufferData(GL_ARRAY_BUFFER, max*sizePerUnit, nullptr, GL_DYNAMIC_DRAW);
+            array = (T*)glMapBufferRange(GL_ARRAY_BUFFER, 0, max*sizePerUnit,
+                                         GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT | GL_MAP_FLUSH_EXPLICIT_BIT | GL_MAP_UNSYNCHRONIZED_BIT);
+            if (array) {
+                mapped = true;
+            } else {
+                mapped = false;
+                array = new T[max * size];
+            }
+        }
+        
+        void Resize(int start, int curCount, int newmax) {
+            if (mapped) {
+                FlushAndUnmap(start, curCount);
+                
+                T *m = (T*)glMapBufferRange(GL_ARRAY_BUFFER, sizePerUnit*start,  sizePerUnit*curCount, GL_MAP_READ_BIT);
+                T *tmpv = nullptr;
+                if (m) {
+                    tmpv = new T[curCount * size];
+                    memcpy(tmpv, m, curCount*sizePerUnit);
+                    glUnmapBuffer(GL_ARRAY_BUFFER);
+                }
+                ReInit(newmax);
+                if (tmpv) {
+                    memcpy(array, tmpv, curCount*sizePerUnit);
+                    delete [] tmpv;
+                }
+            } else {
+                if (array) {
+                    T *ar = new T[size * newmax];
+                    memcpy(ar, &array[start * size], curCount*sizePerUnit);
+                    delete [] array;
+                    array = ar;
+                } else {
+                    array = new T[size * newmax];
+                }
+            }
+        }
+        
+        T &operator[](int idx) {
+            return array[idx];
+        }
+        
+        int sizePerUnit;
+        int size;
+        GLuint id;
+        bool mapped;
+        T *array;
+    };
+    
     int max;
-    uint8_t *colors;
-    float *vertices;
+    int superMax;
+    int start;
     int curCount;
+    
+    xlGLArray<uint8_t> colors;
+    xlGLArray<float> vertices;
+    xlGLArray<float> textures;
+
 
     GLuint MatrixID;
     GLuint TextureID;
     GLuint RenderTypeID;
-    
+
     GLuint ProgramID;
-    GLuint vBufferId;
-    GLuint cBufferId;
-    GLuint tBufferId;
     GLuint VertexArrayID;
 
     std::stack<glm::mat4*> matrixStack;
-    
+
     glm::mat4 *matrix;
 };
 
@@ -346,3 +496,9 @@ protected:
 DrawGLUtils::xlGLCacheInfo *Create31Cache() {
     return new OpenGL31Cache();
 }
+#else 
+DrawGLUtils::xlGLCacheInfo *Create31Cache() {
+    return nullptr;
+}
+
+#endif

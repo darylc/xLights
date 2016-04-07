@@ -20,7 +20,10 @@
 #include <wx/bitmap.h>
 #include "DrawGLUtils.h"
 #include "osxMacUtils.h"
+#include <wx/graphics.h>
 
+#include <map>
+#include "Image.h"
 const double PI  =3.141592653589793238463;
 
 
@@ -156,7 +159,11 @@ DrawGLUtils::xlGLCacheInfo *DrawGLUtils::CreateCache() {
     if (str[0] == '1' || str[0] == '2') {
         return new OpenGL21Cache();
     }
-    return Create31Cache();
+    DrawGLUtils::xlGLCacheInfo *ret = Create31Cache();
+    if (ret == nullptr) {
+        ret = new OpenGL21Cache();
+    }
+    return ret;
 }
 void DrawGLUtils::SetCurrentCache(xlGLCacheInfo *c) {
     currentCache = c;
@@ -483,6 +490,7 @@ void DrawGLUtils::DrawDisplayList(double xOffset, double yOffset,
         return;
     }
     int lastUsage = dl[0].usage;
+    currentCache->ensureSize(dl.size());
     for (int idx = 0; idx < dl.size(); idx++) {
         const DisplayListItem &item = dl[idx];
         if (item.valid) {
@@ -535,15 +543,7 @@ void DrawGLUtils::DrawTexture(GLuint* texture,
     currentCache->DrawTexture(texture, x, y, x2, y2, tx, ty, tx2, ty2);
 }
 
-
-
-
-
-/*** -----------  Yet to be updated for OpenGL 3.1 ----------------- ****/
-
-
-
-void DrawGLUtils::UpdateTexturePixel(GLuint* texture,double x, double y, xlColor& color, bool hasAlpha)
+void DrawGLUtils::UpdateTexturePixel(GLuint* texture, double x, double y, xlColor& color, bool hasAlpha)
 {
     int bytesPerPixel = hasAlpha ?  4 : 3;
     GLubyte *imageData=new GLubyte[bytesPerPixel];
@@ -560,85 +560,177 @@ void DrawGLUtils::UpdateTexturePixel(GLuint* texture,double x, double y, xlColor
     glDisable(GL_TEXTURE_2D);
 }
 
+class FontTexture {
+public:
+    FontTexture() { id = 0;};
+    ~FontTexture() {};
+    
+    bool Valid() { return id != 0;}
+    void Create(int size) {
+        wxSize sze(size, size);
+        wxFont font(size, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+        
+        wxGraphicsContext *ctx = wxGraphicsContext::Create();
+        ctx->SetFont(ctx->CreateFont(size, font.GetFaceName(), wxFONTFLAG_ANTIALIASED));
+        
+        sze.Set(0, 0);
+        wxString s;
+        descent = 0;
+        lineHeight = 0;
+        int line = 0;
+        for (char c = ' '; c <= '~'; c++) {
+            s += c;
+            s += ' ';
+            if (s.length() == 48 || c == '~') {
+                double width, height, desc, el;
+                ctx->GetTextExtent(s, &width, &height, &desc, &el);
+                sze.SetWidth(std::max((int)width, sze.GetWidth()));
+                lineHeight = std::max(lineHeight, (int)height);
+                descent = std::max(descent, (float)desc);
+                s = "";
+                line++;
+            }
+        }
+        delete ctx;
+        lineHeight += 2;
+        sze.SetHeight(lineHeight * line);
+
+        wxImage cimg(sze.GetWidth(), sze.GetHeight());
+        cimg.InitAlpha();
+        ctx = wxGraphicsContext::Create(cimg);
+        ctx->SetAntialiasMode(wxANTIALIAS_DEFAULT);
+        ctx->SetInterpolationQuality(wxInterpolationQuality::wxINTERPOLATION_BEST);
+        ctx->SetCompositionMode(wxCompositionMode::wxCOMPOSITION_OVER);
+        ctx->SetFont(ctx->CreateFont(size, font.GetFaceName(), wxFONTFLAG_ANTIALIASED, *wxWHITE));
+        
+        line = 0;
+        for (char c = ' '; c <= '~'; c++) {
+            s += c;
+            s += ' ';
+            if (s.length() == 48 || c == '~') {
+                ctx->DrawText(s, 0, line * lineHeight);
+                ctx->GetPartialTextExtents(s, widths[line]);
+                line++;
+                s = "";
+            }
+        }
+        delete ctx;
+        
+        
+        for (int x = 0; x < sze.GetWidth(); x++) {
+            for (int y = 0; y < sze.GetHeight(); y++) {
+                int alpha = cimg.GetRed(x, y);
+                if (alpha) {
+                    cimg.SetRGB(x, y, 0, 0, 0);
+                    cimg.SetAlpha(x, y, alpha);
+                } else {
+                    cimg.SetRGB(x, y, 0, 0, 0);
+                    cimg.SetAlpha(x, y, 0);
+                }
+            }
+        }
+
+        
+        image.load(cimg);
+        id = *image.getID();
+    }
+    
+    void Draw(float x, float y, const wxString &text, float factor) {
+        glEnable(GL_BLEND);
+        glDisable(GL_DEPTH_TEST);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        for (int idx = 0; idx < text.Length(); idx++) {
+            char ch = text[idx];
+            if (ch >= ' ' && ch <= '~') {
+                int line = ch;
+                line -= ' ';
+                line /= 24;
+                int pos = ch;
+                pos -= line * 24;
+                pos -= ' ';
+                pos *= 2;
+                
+                float start = 0;
+                if (pos > 0) {
+                    start = widths[line][pos - 1];
+                }
+                float tx = start - 0.5;
+                tx /= image.textureWidth;
+
+                float ty = line * lineHeight;
+                ty /= image.textureHeight;
+                ty = image.tex_coord_y - ty;
+                
+                float tx2 = widths[line][pos] + 0.5;
+                tx2 /= image.textureWidth;
+
+                float ty2 = (line + 1) * (lineHeight) - 2;
+                ty2 /= image.textureHeight;
+                ty2 = image.tex_coord_y - ty2;
+
+                DrawGLUtils::DrawTexture(&id, x, y + float(descent) / factor,
+                                         x + float(widths[line][pos] - start + 1) / factor, y - (float(lineHeight - descent - 2) / factor),
+                                         tx, ty2, tx2, ty);
+                /*
+                if (ch == '1') {
+                    DrawGLUtils::DrawFillRectangle(xlWHITE, 255,x,y, image.textureWidth, image.textureHeight);
+                    DrawGLUtils::DrawTexture(&id, x, y + image.textureHeight,
+                                             x + image.textureWidth, y,
+                                             0, 0, 1, 1);
+                    
+                }
+                */
+                
+
+                x += (widths[line][pos] - start + 0.5) / factor;
+            }
+        }
+        glDisable(GL_BLEND);
+    }
+    
+    float TextWidth(const wxString &text, float factor) {
+        float w = 0;
+        for (int idx = 0; idx < text.Length(); idx++) {
+            char ch = text[idx];
+            if (ch >= ' ' && ch <= '~') {
+                int line = ch;
+                line -= ' ';
+                line /= 24;
+                int pos = ch;
+                pos -= line * 24;
+                pos -= ' ';
+                pos *= 2;
+                
+                float start = 0;
+                if (pos > 0) {
+                    start = widths[line][pos - 1];
+                }
+                w += (widths[line][pos] - start + 0.5) / factor;
+            }
+        }
+        return w;
+    }
+    
+    Image image;
+    int lineHeight;
+    float descent;
+    std::map<int, wxArrayDouble> widths;
+    GLuint id;
+};
+static std::map<unsigned int, FontTexture> FONTS;
+
 void DrawGLUtils::DrawText(double x, double y, double size, const wxString &text, double factor) {
     int tsize = size * factor;
-    void *font = nullptr;
-    switch (tsize) {
-    case 10:
-        font = GLUT_BITMAP_HELVETICA_10;
-        break;
-    case 12:
-        font = GLUT_BITMAP_HELVETICA_12;
-        break;
-    case 18:
-        font = GLUT_BITMAP_HELVETICA_18;
-        break;
+    if (!FONTS[tsize].Valid()) {
+        FONTS[tsize].Create(tsize);
     }
-    if (font) {
-        DrawText(x, y, font, text);
-    } else {
-        DrawStrokedText(x, y, size, text);
-    }
+    FONTS[tsize].Draw(x, y, text, factor);
 }
 int DrawGLUtils::GetTextWidth(double size, const wxString &text, double factor) {
     int tsize = size * factor;
-    void *font = nullptr;
-    switch (tsize) {
-        case 10:
-            font = GLUT_BITMAP_HELVETICA_10;
-            break;
-        case 12:
-            font = GLUT_BITMAP_HELVETICA_12;
-            break;
-        case 18:
-            font = GLUT_BITMAP_HELVETICA_18;
-            break;
+    if (!FONTS[tsize].Valid()) {
+        FONTS[tsize].Create(tsize);
     }
-    if (font) {
-        return GetTextWidth(font, text);
-    }
-    return GetStrokedTextWidth(size, text);
+    return FONTS[tsize].TextWidth(text, factor);
 }
-
-void DrawGLUtils::DrawStrokedText(double x, double y, float size, const wxString &text, double factor) {
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_BLEND);
-    glEnable(GL_LINE_SMOOTH);
-    glLineWidth(factor * 0.9);
-    DrawGLUtils::PushMatrix();
-    glColor3f(0, 0, 0);
-    glTranslatef(x, y, 0);
-    glScalef(size / 150.0, - size / 150.0, 1.0);
-    for (int x = 0; x  < text.length(); x++) {
-        glutStrokeCharacter(GLUT_STROKE_ROMAN, text[x]);
-    }
-    DrawGLUtils::PopMatrix();
-    glDisable(GL_BLEND);
-    glDisable(GL_LINE_SMOOTH);
-}
-
-int DrawGLUtils::GetStrokedTextWidth(float size, const wxString &text) {
-    return glutStrokeLength(GLUT_STROKE_ROMAN, text.c_str()) * size / 150;
-}
-
-
-void DrawGLUtils::DrawText(double x, double y, void *glutBitmapFont, const wxString &text) {
-    DrawGLUtils::PushMatrix();
-    glColor3f(0, 0, 0);
-    glRasterPos2f(x, y);
-    for (int x = 0; x  < text.length(); x++) {
-        glutBitmapCharacter(glutBitmapFont, text[x]);
-    }
-    DrawGLUtils:PopMatrix();
-}
-
-int DrawGLUtils::GetTextWidth(void *glutBitmapFont, const wxString &text)
-{
-    int length = 0;
-    for (int x = 0; x  < text.length(); x++) {
-        length += glutBitmapWidth(glutBitmapFont, text[x]);
-    }
-    return length;
-}
-
 

@@ -1524,7 +1524,12 @@ void Model::DisplayModelOnWindow(ModelPreview* preview, const xlColor *c, bool a
         glPointSize(preview->calcPixelSize(pixelSize));
     }
     GetModelScreenLocation().PrepareToDraw();
-    DrawGLUtils::PreAlloc(NodeCount);
+    
+    int vcount = 0;
+    for (auto it = Nodes.begin(); it != Nodes.end(); it++) {
+        vcount += it->get()->Coords.size();
+    }
+    DrawGLUtils::PreAlloc(vcount);
 
     bool started = false;
     int first = 0; int last = NodeCount;
@@ -1626,7 +1631,11 @@ void Model::DisplayEffectOnWindow(ModelPreview* preview, double pointSize) {
 
         // layer calculation and map to output
         size_t NodeCount=Nodes.size();
-        DrawGLUtils::PreAlloc(NodeCount);
+        int vcount = 0;
+        for (auto it = Nodes.begin(); it != Nodes.end(); it++) {
+            vcount += it->get()->Coords.size();
+        }
+        DrawGLUtils::PreAlloc(vcount);
         double sx,sy;
         bool started = false;
         int first = 0; int last = NodeCount;

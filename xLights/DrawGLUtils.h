@@ -63,12 +63,7 @@ namespace DrawGLUtils
             clear();
         }
     };
-
-    void DrawText(double x, double y, void *glutBitmapFont, const wxString &text);
-    int GetTextWidth(void *glutBitmapFont, const wxString &text);
-    void DrawStrokedText(double x, double y, float size, const wxString &text, double factor = 1.0);
-    int GetStrokedTextWidth(float size, const wxString &text);
-    
+   
     void DrawText(double x, double y, double size, const wxString &text, double factor = 1.0);
     int GetTextWidth(double size, const wxString &text, double factor = 1.0);
     

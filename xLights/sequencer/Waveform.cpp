@@ -300,14 +300,12 @@ void Waveform::DrawWaveView(const WaveView &wv)
     // draw shaded region if needed
     if( selected_x1 != -1 && selected_x2 != -1)
     {
-        glEnable(GL_BLEND);
         color.Set(0, 0, 200, 45);
         DrawGLUtils::AddVertex(selected_x1, 1, color);
         DrawGLUtils::AddVertex(selected_x2, 1, color);
         DrawGLUtils::AddVertex(selected_x2, mWindowHeight-1, color);
         DrawGLUtils::AddVertex(selected_x1, mWindowHeight-1, color);
-        DrawGLUtils::End(GL_TRIANGLE_FAN);
-        glDisable(GL_BLEND);
+        DrawGLUtils::End(GL_TRIANGLE_FAN, GL_BLEND);
     }
 
     if(_media != NULL)
@@ -316,6 +314,7 @@ void Waveform::DrawWaveView(const WaveView &wv)
 
         std::vector<double> vertexes;
         vertexes.resize((mWindowWidth + 2) * 2);
+        DrawGLUtils::PreAlloc(mWindowWidth * 2 + 4);
 
         for (int x=0;x<mWindowWidth && (x)<wv.MinMaxs.size();x++)
         {
@@ -331,8 +330,8 @@ void Waveform::DrawWaveView(const WaveView &wv)
             }
         }
         DrawGLUtils::End(GL_TRIANGLE_STRIP);
-
         
+        DrawGLUtils::PreAlloc(mWindowWidth * 2 + 4);
         for(int x=0;x<mWindowWidth-1 && (x)<wv.MinMaxs.size();x++)
         {
             DrawGLUtils::AddVertex(x, vertexes[x * 2], xlWHITE);
