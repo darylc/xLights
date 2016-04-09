@@ -178,7 +178,7 @@ public:
             glDeleteProgram(ProgramID);
         }
     }
-    virtual void addVertex(double x, double y, const xlColor &c) override {
+    virtual void addVertex(float x, float y, const xlColor &c) override {
         ensureSize(1);
         vertices[curCount * 2] = x;
         vertices[curCount * 2 + 1] = y;
@@ -190,7 +190,7 @@ public:
         colors[curCount*4 + 3] = c.Alpha();
         curCount++;
     }
-    virtual void ensureSize(int s) override {
+    virtual void ensureSize(unsigned int s) override {
         int size = curCount + s;
         if (size > max) {
             superMax = std::max(superMax, size);
@@ -204,7 +204,7 @@ public:
             start = 0;
         }
     }
-    virtual int vertexCount() override {
+    virtual unsigned int vertexCount() override {
         return curCount;
     }
 
@@ -494,7 +494,7 @@ protected:
 
 
 DrawGLUtils::xlGLCacheInfo *Create31Cache() {
-    return new OpenGL31Cache();
+    return nullptr; //new OpenGL31Cache();
 }
 #else 
 DrawGLUtils::xlGLCacheInfo *Create31Cache() {

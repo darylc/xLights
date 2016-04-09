@@ -77,15 +77,22 @@ void GetOnEffectColors(const Effect *e, xlColor &start, xlColor &end) {
         end = hsv;
     }
 }
-int OnEffect::DrawEffectBackground(const Effect *e, int x1, int y1, int x2, int y2) {
+int OnEffect::DrawEffectBackground(const Effect *e, int x1, int y1, int x2, int y2,
+                                   DrawGLUtils::xlVertexColorAccumulator &bg) {
     if (e->HasBackgroundDisplayList()) {
-        DrawGLUtils::DrawDisplayList(x1, y1, x2-x1, y2-y1, e->GetBackgroundDisplayList());
+        DrawGLUtils::DrawDisplayList(x1, y1, x2-x1, y2-y1, e->GetBackgroundDisplayList(), bg);
         return e->GetBackgroundDisplayList().iconSize;
     }
     xlColor start;
     xlColor end;
     GetOnEffectColors(e, start, end);
-    DrawGLUtils::DrawHBlendedRectangle(start, end, x1, y1, x2, y2);
+    bg.AddVertex(x1, y1, start);
+    bg.AddVertex(x1, y2, start);
+    bg.AddVertex(x2, y2, end);
+    
+    bg.AddVertex(x2, y2, end);
+    bg.AddVertex(x2, y1, end);
+    bg.AddVertex(x1, y1, start);
     return 2;
 }
 

@@ -29,69 +29,88 @@ const double PI  =3.141592653589793238463;
 
 static DrawGLUtils::xlGLCacheInfo *currentCache;
 
-class OpenGL21Cache : public DrawGLUtils::xlGLCacheInfo {
+class OpenGL15Cache : public DrawGLUtils::xlGLCacheInfo {
 public:
-    OpenGL21Cache() {
-        max = 1024;
-        colors = new unsigned char[max * 4];
-        vertices = new double[max * 2];
-        curCount = 0;
+    OpenGL15Cache() {
+        data.PreAlloc(128);
     };
-    virtual ~OpenGL21Cache() {
-        delete [] colors;
-        delete [] vertices;
+    virtual ~OpenGL15Cache() {
     };
     
-    virtual void addVertex(double x, double y, const xlColor &c) override {
-        ensureSize(1);
-        vertices[curCount * 2] = x;
-        vertices[curCount * 2 + 1] = y;
-        colors[curCount*4] = c.Red();
-        colors[curCount*4 + 1] = c.Green();
-        colors[curCount*4 + 2] = c.Blue();
-        colors[curCount*4 + 3] = c.Alpha();
-        curCount++;
+    virtual void addVertex(float x, float y, const xlColor &c) override {
+        data.PreAlloc(1);
+        data.AddVertex(x, y, c);
     }
-    virtual void ensureSize(int s) override {
-        int size = curCount + s;
-        if (size > max) {
-            unsigned char *tmp = new unsigned char[size * 4];
-            for (int x = 0; x < (max*4); x++) {
-                tmp[x] = colors[x];
-            }
-            delete [] colors;
-            colors = tmp;
-            double *tmpf = new double[size * 2];
-            for (int x = 0; x < (max*2); x++) {
-                tmpf[x] = vertices[x];
-            }
-            delete [] vertices;
-            vertices = tmpf;
-            max = size;
-        }
+    virtual void ensureSize(unsigned int s) override {
+        data.PreAlloc(s);
     }
-    virtual int vertexCount() override {
-        return curCount;
+    virtual unsigned int vertexCount() override {
+        return data.count;
     }
     virtual void flush(int type, int enableCapability) override {
+        Draw(data, type, enableCapability);
+        data.Reset();
+    }
+
+    
+    void Draw(DrawGLUtils::xlVertexAccumulator &va, const xlColor & color, int type, int enableCapability) override {
+        if (enableCapability != 0) {
+            glEnable(enableCapability);
+        }
+        glColor4ub(color.Red(), color.Green(), color.Blue(), color.Alpha());
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glVertexPointer(2, GL_FLOAT, 0, &va.vertices[0]);
+        glDrawArrays(type, 0, va.count);
+        
+        glDisableClientState(GL_VERTEX_ARRAY);
+        if (enableCapability != 0) {
+            glDisable(enableCapability);
+        }
+    }
+    void Draw(DrawGLUtils::xlVertexColorAccumulator &va, int type, int enableCapability) override {
         if (enableCapability != 0) {
             glEnable(enableCapability);
         }
         glEnableClientState(GL_VERTEX_ARRAY);
         glEnableClientState(GL_COLOR_ARRAY);
         
-        glColorPointer(4, GL_UNSIGNED_BYTE, 0, colors);
-        glVertexPointer(2, GL_DOUBLE, 0, vertices);
-        glDrawArrays(type, 0, curCount);
+        glColorPointer(4, GL_UNSIGNED_BYTE, 0, &va.colors[0]);
+        glVertexPointer(2, GL_FLOAT, 0, &va.vertices[0]);
+        glDrawArrays(type, 0, va.count);
         
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableClientState(GL_COLOR_ARRAY);
-        curCount = 0;
         if (enableCapability != 0) {
             glDisable(enableCapability);
         }
     }
+    void Draw(DrawGLUtils::xlVertexTextureAccumulator &va, int type, int enableCapability)  override {
+        if (enableCapability != 0) {
+            glEnable(enableCapability);
+        }
+        
+        glEnable(GL_TEXTURE_2D);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        
+        glActiveTexture(GL_TEXTURE0); //switch to texture image unit 0
+        glBindTexture(GL_TEXTURE_2D, va.id);
 
+        glEnableClientState(GL_VERTEX_ARRAY);
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+        
+        glTexCoordPointer(2, GL_FLOAT, 0, &va.tvertices[0]);
+        glVertexPointer(2, GL_FLOAT, 0, &va.vertices[0]);
+        glDrawArrays(type, 0, va.count);
+        
+        glDisableClientState(GL_VERTEX_ARRAY);
+        glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        if (enableCapability != 0) {
+            glDisable(enableCapability);
+        }
+        glDisable(GL_TEXTURE_2D);
+    }
+    
+    
     
     virtual void Ortho(int topleft_x, int topleft_y, int bottomright_x, int bottomright_y) override {
         glMatrixMode(GL_PROJECTION);
@@ -120,48 +139,43 @@ public:
 
     void DrawTexture(GLuint* texture, float x, float y, float x2, float y2,
                      float tx, float ty, float tx2, float ty2) override {
-        glEnable(GL_TEXTURE_2D);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glBindTexture(GL_TEXTURE_2D,*texture);
-        glPushMatrix();
-        glBegin(GL_QUADS);
-        glTexCoord2f(tx, ty);
         
-        glVertex2f(x-0.4, y);
         
-        glTexCoord2f(tx2, ty);
-        glVertex2f(x2-0.4,y);
+        DrawGLUtils::xlVertexTextureAccumulator va(*texture);
+        va.PreAlloc(6);
+
+        va.AddVertex(x - 0.4, y, tx, ty);
+        va.AddVertex(x - 0.4, y2, tx, ty2);
+        va.AddVertex(x2 - 0.4, y2, tx2, ty2);
+        va.AddVertex(x2 - 0.4, y2, tx2, ty2);
+        va.AddVertex(x2 - 0.4, y, tx2, ty);
+        va.AddVertex(x - 0.4, y, tx, ty);
         
-        glTexCoord2f(tx2, ty2);
-        glVertex2f(x2-0.4,y2);
-        
-        glTexCoord2f(tx, ty2);
-        glVertex2f(x-0.4,y2);
-        glEnd();
-        glPopMatrix();
-        glDisable(GL_TEXTURE_2D);
+        Draw(va, GL_TRIANGLES, 0);
     }
 
 protected:
-    int max;
-    unsigned char *colors;
-    double *vertices;
-    int curCount;
+    DrawGLUtils::xlVertexColorAccumulator data;
+    unsigned int curCount;
 };
 
 
 
 DrawGLUtils::xlGLCacheInfo *Create31Cache();
+DrawGLUtils::xlGLCacheInfo *Create21Cache();
 
 
 DrawGLUtils::xlGLCacheInfo *DrawGLUtils::CreateCache() {
     const GLubyte* str = glGetString(GL_VERSION);
-    if (str[0] == '1' || str[0] == '2') {
-        return new OpenGL21Cache();
+    DrawGLUtils::xlGLCacheInfo *ret = nullptr;
+    if (str[0] >= '3') {
+        //ret = Create31Cache();
     }
-    DrawGLUtils::xlGLCacheInfo *ret = Create31Cache();
+    if (str[0] == '2') {
+        //ret = Create21Cache();
+    }
     if (ret == nullptr) {
-        ret = new OpenGL21Cache();
+        ret = new OpenGL15Cache();
     }
     return ret;
 }
@@ -201,6 +215,15 @@ void DrawGLUtils::Rotate(float angle, float x, float y, float z) {
 }
 void DrawGLUtils::Scale(float w, float h, float z) {
     currentCache->Scale(w, h, z);
+}
+void DrawGLUtils::Draw(xlVertexAccumulator &va, const xlColor & color, int type, int enableCapability) {
+    currentCache->Draw(va, color, type, enableCapability);
+}
+void DrawGLUtils::Draw(xlVertexColorAccumulator &va, int type, int enableCapability) {
+    currentCache->Draw(va, type, enableCapability);
+}
+void DrawGLUtils::Draw(xlVertexTextureAccumulator &va, int type, int enableCapability) {
+    currentCache->Draw(va, type, enableCapability);
 }
 
 
@@ -482,26 +505,19 @@ void DrawGLUtils::DrawHBlendedRectangle(const xlColorVector &colors, int x1, int
 }
 
 
-void DrawGLUtils::DrawDisplayList(double xOffset, double yOffset,
-                                  double width, double height,
-                                  const DrawGLUtils::xlDisplayList & dl) {
+void DrawGLUtils::DrawDisplayList(float xOffset, float yOffset,
+                                  float width, float height,
+                                  const DrawGLUtils::xlDisplayList & dl,
+                                  xlVertexColorAccumulator &bg) {
     std::lock_guard<std::recursive_mutex> lock(dl.lock);
     if (dl.empty()) {
         return;
     }
-    int lastUsage = dl[0].usage;
-    currentCache->ensureSize(dl.size());
+    bg.PreAlloc(dl.size());
     for (int idx = 0; idx < dl.size(); idx++) {
         const DisplayListItem &item = dl[idx];
-        if (item.valid) {
-            if (item.usage != lastUsage) {
-                currentCache->flush(lastUsage);
-            }
-            lastUsage = item.usage;
-            currentCache->addVertex(xOffset + item.x * width, yOffset + item.y * height, item.color);
-        }
+        bg.AddVertex(xOffset + item.x * width, yOffset + item.y * height, item.color);
     }
-    currentCache->flush(lastUsage);
 }
 
 
@@ -634,11 +650,10 @@ public:
         image.load(cimg);
         id = *image.getID();
     }
-    
-    void Draw(float x, float y, const wxString &text, float factor) {
-        glEnable(GL_BLEND);
-        glDisable(GL_DEPTH_TEST);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    void Populate(float x, float yBase, const wxString &text, float factor, DrawGLUtils::xlVertexTextureAccumulator &va) {
+        va.PreAlloc(6 * text.Length());
+        va.id = id;
+        
         for (int idx = 0; idx < text.Length(); idx++) {
             char ch = text[idx];
             if (ch >= ' ' && ch <= '~') {
@@ -657,21 +672,32 @@ public:
                 float tx = start - 0.5;
                 tx /= image.textureWidth;
 
-                float ty = line * lineHeight;
-                ty /= image.textureHeight;
-                ty = image.tex_coord_y - ty;
+                float ty2 = line * lineHeight;
+                ty2 /= image.textureHeight;
+                ty2 = image.tex_coord_y - ty2;
                 
                 float tx2 = widths[line][pos] + 0.5;
                 tx2 /= image.textureWidth;
 
-                float ty2 = (line + 1) * (lineHeight) - 2;
-                ty2 /= image.textureHeight;
-                ty2 = image.tex_coord_y - ty2;
+                float ty = (line + 1) * (lineHeight) - 2;
+                ty /= image.textureHeight;
+                ty = image.tex_coord_y - ty;
 
-                DrawGLUtils::DrawTexture(&id, x, y + float(descent) / factor,
-                                         x + float(widths[line][pos] - start + 1) / factor, y - (float(lineHeight - descent - 2) / factor),
-                                         tx, ty2, tx2, ty);
+                float y = yBase + float(descent) / factor;
+                float x2 = x + float(widths[line][pos] - start + 1) / factor;
+                float y2 = yBase - (float(lineHeight - descent - 2) / factor);
+                
+                va.AddVertex(x - 0.4, y, tx, ty);
+                va.AddVertex(x - 0.4, y2, tx, ty2);
+                va.AddVertex(x2 - 0.4, y2, tx2, ty2);
+                va.AddVertex(x2 - 0.4, y2, tx2, ty2);
+                va.AddVertex(x2 - 0.4, y, tx2, ty);
+                va.AddVertex(x - 0.4, y, tx, ty);
+                
                 /*
+                DrawGLUtils::DrawTexture(&id, x, yBase + float(descent) / factor,
+                                         x + float(widths[line][pos] - start + 1) / factor, yBase - (float(lineHeight - descent - 2) / factor),
+                                         tx, ty, tx2, ty2);
                 if (ch == '1') {
                     DrawGLUtils::DrawFillRectangle(xlWHITE, 255,x,y, image.textureWidth, image.textureHeight);
                     DrawGLUtils::DrawTexture(&id, x, y + image.textureHeight,
@@ -685,7 +711,14 @@ public:
                 x += (widths[line][pos] - start + 0.5) / factor;
             }
         }
-        glDisable(GL_BLEND);
+        
+    }
+    void Draw(float x, float yBase, const wxString &text, float factor) {
+        glDisable(GL_DEPTH_TEST);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        DrawGLUtils::xlVertexTextureAccumulator va(id);
+        Populate(x, yBase, text, factor, va);
+        DrawGLUtils::Draw(va, GL_TRIANGLES, GL_BLEND);
     }
     
     float TextWidth(const wxString &text, float factor) {

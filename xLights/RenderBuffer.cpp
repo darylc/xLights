@@ -919,13 +919,6 @@ void RenderBuffer::SetDisplayListRect(Effect *eff, int idx, double x1, double y1
     eff->GetBackgroundDisplayList()[idx+3].y = y2;
     eff->GetBackgroundDisplayList()[idx+4].y = y1;
     eff->GetBackgroundDisplayList()[idx+5].y = y1;
-
-    eff->GetBackgroundDisplayList()[idx].usage = GL_TRIANGLES;
-    eff->GetBackgroundDisplayList()[idx+1].usage = GL_TRIANGLES;
-    eff->GetBackgroundDisplayList()[idx+2].usage = GL_TRIANGLES;
-    eff->GetBackgroundDisplayList()[idx+3].usage = GL_TRIANGLES;
-    eff->GetBackgroundDisplayList()[idx+4].usage = GL_TRIANGLES;
-    eff->GetBackgroundDisplayList()[idx+5].usage = GL_TRIANGLES;
 }
 void RenderBuffer::CopyPixelsToDisplayListX(Effect *eff, int row, int sx, int ex, int inc) {
     std::lock_guard<std::recursive_mutex> lock(eff->GetBackgroundDisplayList().lock);

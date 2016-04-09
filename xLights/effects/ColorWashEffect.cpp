@@ -34,9 +34,10 @@ ColorWashEffect::~ColorWashEffect()
 }
 
 
-int ColorWashEffect::DrawEffectBackground(const Effect *e, int x1, int y1, int x2, int y2) {
+int ColorWashEffect::DrawEffectBackground(const Effect *e, int x1, int y1, int x2, int y2,
+                                          DrawGLUtils::xlVertexColorAccumulator &bg) {
     if (e->HasBackgroundDisplayList()) {
-        DrawGLUtils::DrawDisplayList(x1, y1, x2-x1, y2-y1, e->GetBackgroundDisplayList());
+        DrawGLUtils::DrawDisplayList(x1, y1, x2-x1, y2-y1, e->GetBackgroundDisplayList(), bg);
         return e->GetBackgroundDisplayList().iconSize;
     }
     DrawGLUtils::DrawHBlendedRectangle(e->GetPalette(), x1, y1, x2, y2);
