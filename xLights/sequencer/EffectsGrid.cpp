@@ -2383,13 +2383,13 @@ void EffectsGrid::DrawEffects()
                                 linesRight->AddVertex(x2,y);
                                 
                                 lines.AddVertex(xl-0.4,y-sz);
-                                lines.AddVertex(xr,y-sz);
+                                lines.AddVertex(xr+0.4,y-sz);
                                 lines.AddVertex(xl-0.4,y+sz);
-                                lines.AddVertex(xr,y+sz);
-                                lines.AddVertex(xl,y-sz);
-                                lines.AddVertex(xl,y+sz);
-                                lines.AddVertex(xr,y-sz);
-                                lines.AddVertex(xr,y+sz);
+                                lines.AddVertex(xr+0.4,y+sz);
+                                lines.AddVertex(xl-0.4,y+sz+0.25);
+                                lines.AddVertex(xl-0.4,y-sz);
+                                lines.AddVertex(xr+0.4,y+sz+0.25);
+                                lines.AddVertex(xr+0.4,y-sz);
                             }
                             else if (x > MINIMUM_EFFECT_WIDTH_FOR_SMALL_RECT)
                             {
@@ -2402,13 +2402,13 @@ void EffectsGrid::DrawEffects()
                                 float xl = x1+(x/2)-1;
                                 float xr = x1+(x/2)+1;
                                 lines.AddVertex(xl-0.4,y-sz);
-                                lines.AddVertex(xr,y-sz);
+                                lines.AddVertex(xr+0.4,y-sz);
                                 lines.AddVertex(xl-0.4,y+sz);
-                                lines.AddVertex(xr,y+sz);
-                                lines.AddVertex(xl,y-sz);
-                                lines.AddVertex(xl,y+sz);
-                                lines.AddVertex(xr,y-sz);
-                                lines.AddVertex(xr,y+sz);
+                                lines.AddVertex(xr+0.4,y+sz);
+                                lines.AddVertex(xl-0.4,y+sz+0.25);
+                                lines.AddVertex(xl-0.4,y-sz);
+                                lines.AddVertex(xr+0.4,y+sz+0.25);
+                                lines.AddVertex(xr+0.4,y-sz);
                             }
                             else
                             {

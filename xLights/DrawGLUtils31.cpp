@@ -53,10 +53,18 @@ public:
             "layout(location = 2) in vec2 vertexUV;\n"
             "out vec4 fragmentColor;\n"
             "out vec2 UV;\n"
+            "uniform int RenderType;\n"
             "uniform mat4 MVP;\n"
+            "uniform vec4 inColor;\n"
             "void main(){\n"
             "    gl_Position = MVP * vec4(vertexPosition_modelspace,0,1);"
-            "    fragmentColor = vertexColor;\n"
+            "    if (RenderType == -2) {\n"
+            "        fragmentColor = inColor;\n"
+            "    } else if (RenderType == -1) {\n"
+            "        fragmentColor = inColor;\n"
+            "    } else {\n"
+            "        fragmentColor = vertexColor;\n"
+            "    }\n"
             "    UV = vertexUV;\n"
             "}\n";
         glShaderSource(VertexShaderID, 1, &VertexSourcePointer , NULL);
@@ -67,6 +75,7 @@ public:
         if ( InfoLogLength > 0 ) {
             std::vector<char> VertexShaderErrorMessage(InfoLogLength+1);
             glGetShaderInfoLog(VertexShaderID, InfoLogLength, NULL, &VertexShaderErrorMessage[0]);
+            printf("%s\n", &VertexShaderErrorMessage[0]);
         }
 
         char const * FragmentSourcePointer =
@@ -80,7 +89,7 @@ public:
             "void main(){\n"
             "    if (RenderType == -1) {\n"
             "        color = texture(tex, UV);\n"
-            "    } else if (RenderType == 0) {\n"
+            "    } else if (RenderType == 0 || RenderType == -2) {\n"
             "        color = fragmentColor;\n"
             "    } else {\n"
             "        vec2 dv = abs(gl_PointCoord - vec2(0.5, 0.5));\n "
@@ -100,6 +109,7 @@ public:
         if ( InfoLogLength > 0 ) {
             std::vector<char> FragmentShaderErrorMessage(InfoLogLength+1);
             glGetShaderInfoLog(FragmentShaderID, InfoLogLength, NULL, &FragmentShaderErrorMessage[0]);
+            printf("%s\n", &FragmentShaderErrorMessage[0]);
         }
 
         ProgramID = glCreateProgram();
@@ -112,6 +122,7 @@ public:
         if ( InfoLogLength > 0 ){
             std::vector<char> ProgramErrorMessage(InfoLogLength+1);
             glGetProgramInfoLog(ProgramID, InfoLogLength, NULL, &ProgramErrorMessage[0]);
+            printf("%s\n", &ProgramErrorMessage[0]);
         }
         glDetachShader(ProgramID, VertexShaderID);
         glDetachShader(ProgramID, FragmentShaderID);
@@ -122,7 +133,6 @@ public:
         glGenVertexArrays(1, &VertexArrayID);
         glBindVertexArray(VertexArrayID);
         MatrixID = glGetUniformLocation(ProgramID, "MVP");
-        TextureID = glGetUniformLocation(ProgramID, "myTextureSampler");
         RenderTypeID = glGetUniformLocation(ProgramID, "RenderType");
         glUniform1i(glGetUniformLocation(ProgramID, "tex"), 0);
 
@@ -159,6 +169,10 @@ public:
                               (void*)0            // array buffer offset
                               );
         glDisableVertexAttribArray(2);
+        
+        glGenBuffers(1, &vBuffer);
+        glGenBuffers(1, &cBuffer);
+        glGenBuffers(1, &tBuffer);
         start = 0;
     }
     ~OpenGL31Cache() {
@@ -177,7 +191,115 @@ public:
             glDeleteVertexArrays(1, &VertexArrayID);
             glDeleteProgram(ProgramID);
         }
+        glDeleteBuffers(1, &vBuffer);
+        glDeleteBuffers(1, &cBuffer);
+        glDeleteBuffers(1, &tBuffer);
     }
+    
+    
+    
+    void Draw(DrawGLUtils::xlVertexAccumulator &va, const xlColor & color, int type, int enableCapability) override {
+        glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
+        glBufferData(GL_ARRAY_BUFFER, va.count*2*sizeof(GLfloat), &va.vertices[0], GL_DYNAMIC_DRAW);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0 );
+        
+        glDisableVertexAttribArray(1);
+        GLuint cid = glGetUniformLocation(ProgramID, "inColor");
+        glUniform4f(cid,
+                    ((float)color.Red())/255.0,
+                    ((float)color.Green())/255.0,
+                    ((float)color.Blue())/255.0,
+                    ((float)color.Alpha())/255.0
+                    );
+        glUniform1i(RenderTypeID, -2);
+        if (enableCapability > 0) {
+            glEnable(enableCapability);
+        }
+        glDrawArrays(type, 0, va.count);
+        glUniform1i(RenderTypeID, 0);
+        if (enableCapability > 0) {
+            glDisable(enableCapability);
+        }
+        
+        glBindBuffer(GL_ARRAY_BUFFER, vertices.id);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0 );
+        glEnableVertexAttribArray(1);
+    }
+    void Draw(DrawGLUtils::xlVertexColorAccumulator &va, int type, int enableCapability) override {
+        glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
+        glBufferData(GL_ARRAY_BUFFER, va.count*2*sizeof(GLfloat), &va.vertices[0], GL_DYNAMIC_DRAW);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0 );
+
+        
+        glBindBuffer(GL_ARRAY_BUFFER, cBuffer);
+        glBufferData(GL_ARRAY_BUFFER, va.count*4*sizeof(GLubyte), &va.colors[0], GL_DYNAMIC_DRAW);
+        glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, (void*)0 );
+
+        float ps;
+        if (type == GL_POINTS && enableCapability == 0x0B10) {
+            //POINT_SMOOTH, removed in OpenGL3.x
+            glGetFloatv(GL_POINT_SIZE, &ps);
+            glPointSize(ps + 1.0); //need a little larger for the blending
+            glUniform1i(RenderTypeID, 1);
+        } else {
+            if (enableCapability > 0) {
+                glEnable(enableCapability);
+            } else if (enableCapability != 0) {
+                glUniform1i(RenderTypeID, enableCapability);
+            }
+        }
+        glDrawArrays(type, 0, va.count);
+        if (type == GL_POINTS && enableCapability == 0x0B10) {
+            glPointSize(ps);
+            glUniform1i(RenderTypeID, 0);
+        } else if (enableCapability > 0) {
+            glDisable(enableCapability);
+        } else if (enableCapability != 0) {
+            glUniform1i(RenderTypeID, 0);
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, vertices.id);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0 );
+        glBindBuffer(GL_ARRAY_BUFFER, colors.id);
+        glVertexAttribPointer(1, GL_BGRA, GL_UNSIGNED_BYTE, GL_TRUE, 0, (void*)0 );
+    }
+    void Draw(DrawGLUtils::xlVertexTextureAccumulator &va, int type, int enableCapability) override {
+        glGetError();
+        glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
+        glBufferData(GL_ARRAY_BUFFER, va.count*2*sizeof(GLfloat), &va.vertices[0], GL_DYNAMIC_DRAW);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0 );
+        glEnableVertexAttribArray(0);
+        glDisableVertexAttribArray(1);
+        glActiveTexture(GL_TEXTURE0); //switch to texture image unit 0
+        glBindTexture(GL_TEXTURE_2D, va.id);
+        glUniform1i(glGetUniformLocation(ProgramID, "tex"), 0);
+
+        glEnableVertexAttribArray(2);
+        glBindBuffer(GL_ARRAY_BUFFER, tBuffer);
+        glBufferData(GL_ARRAY_BUFFER, va.count*2*sizeof(GLfloat), &va.tvertices[0], GL_DYNAMIC_DRAW);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, (void*)0 );
+
+        GLuint cid = glGetUniformLocation(ProgramID, "inColor");
+        glUniform4f(cid, 1.0, 1.0, 1.0, ((float)va.alpha)/255.0);
+
+        glUniform1i(RenderTypeID, -1);
+        if (enableCapability > 0) {
+            glEnable(enableCapability);
+        }
+
+        glDrawArrays(type, 0, va.count);
+
+        glUniform1i(RenderTypeID, 0);
+        if (enableCapability > 0) {
+            glDisable(enableCapability);
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, vertices.id);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0 );
+        glEnableVertexAttribArray(1);
+        glDisableVertexAttribArray(2);
+    }
+    
+    
     virtual void addVertex(float x, float y, const xlColor &c) override {
         ensureSize(1);
         vertices[curCount * 2] = x;
@@ -485,6 +607,10 @@ protected:
 
     GLuint ProgramID;
     GLuint VertexArrayID;
+    
+    GLuint vBuffer;
+    GLuint cBuffer;
+    GLuint tBuffer;
 
     std::stack<glm::mat4*> matrixStack;
 
@@ -494,7 +620,7 @@ protected:
 
 
 DrawGLUtils::xlGLCacheInfo *Create31Cache() {
-    return nullptr; //new OpenGL31Cache();
+    return new OpenGL31Cache();
 }
 #else 
 DrawGLUtils::xlGLCacheInfo *Create31Cache() {

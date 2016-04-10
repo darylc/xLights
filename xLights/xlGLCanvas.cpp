@@ -123,13 +123,13 @@ END_EVENT_TABLE()
 #include "osxMacUtils.h"
 
 static const int GLARGS[] = {WX_GL_RGBA, WX_GL_DOUBLEBUFFER, WX_GL_DEPTH_SIZE, 16, 0};
-static const int CORE_GLARGS[] = {WX_GL_CORE_PROFILE, WX_GL_RGBA, WX_GL_DOUBLEBUFFER, WX_GL_DEPTH_SIZE, 16, 0}; // WX_GL_SAMPLE_BUFFERS, 1, WX_GL_SAMPLES, 8,  0};
+static const int CORE_GLARGS[] = {WX_GL_CORE_PROFILE, WX_GL_RGBA, WX_GL_DOUBLEBUFFER, WX_GL_DEPTH_SIZE, 16, 0};
 
 xlGLCanvas::xlGLCanvas(wxWindow* parent, wxWindowID id, const wxPoint &pos,
                        const wxSize &size, long style, const wxString &name,
                        bool coreProfile)
 #ifndef __WXMSW__
-    :wxGLCanvas(parent, id, coreProfile ? GLARGS : GLARGS, pos, size, wxFULL_REPAINT_ON_RESIZE | wxCLIP_CHILDREN | wxCLIP_SIBLINGS | style),
+    :wxGLCanvas(parent, id, coreProfile ? CORE_GLARGS : GLARGS, pos, size, wxFULL_REPAINT_ON_RESIZE | wxCLIP_CHILDREN | wxCLIP_SIBLINGS | style),
 #else
     :   wxWindow(parent, id, pos, size, wxFULL_REPAINT_ON_RESIZE | wxCLIP_CHILDREN | wxCLIP_SIBLINGS | style),
 #endif
