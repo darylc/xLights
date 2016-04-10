@@ -194,7 +194,7 @@ public:
         if (enableCapability != 0) {
             glEnable(enableCapability);
         }
-        glDrawArrays(type, 0, data.count);
+        glDrawArrays(type, 0, va.count);
         if (enableCapability > 0) {
             glDisable(enableCapability);
         }

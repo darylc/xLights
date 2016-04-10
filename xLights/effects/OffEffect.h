@@ -8,7 +8,7 @@ class OffEffect : public RenderableEffect
     public:
         OffEffect(int id);
         virtual ~OffEffect();
-        virtual bool CanBeRandom() {return false;}
+        virtual bool CanBeRandom() override {return false;}
         virtual void Render(Effect *effect, const SettingsMap &settings, RenderBuffer &buffer) override;
 
     protected:

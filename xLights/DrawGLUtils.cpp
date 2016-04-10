@@ -111,7 +111,6 @@ public:
     }
     
     
-    
     virtual void Ortho(int topleft_x, int topleft_y, int bottomright_x, int bottomright_y) override {
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
@@ -765,5 +764,18 @@ int DrawGLUtils::GetTextWidth(double size, const wxString &text, double factor) 
         FONTS[tsize].Create(tsize);
     }
     return FONTS[tsize].TextWidth(text, factor);
+}
+
+void DrawGLUtils::Draw(DrawGLUtils::xlVertexTextAccumulator &va, int size, float factor, int enableCapability) {
+    int tsize = size * factor;
+    if (!FONTS[tsize].Valid()) {
+        FONTS[tsize].Create(tsize);
+    }
+    DrawGLUtils::xlVertexTextureAccumulator vat;
+    for (int x = 0; x < va.count; x++) {
+        FONTS[tsize].Populate(va.vertices[x*2], va.vertices[x*2 + 1], va.text[x], factor, vat);
+    }
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    Draw(vat, GL_TRIANGLES, enableCapability);
 }
 

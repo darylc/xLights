@@ -2248,18 +2248,10 @@ void EffectsGrid::DrawEffects()
     for(int row=0;row<mSequenceElements->GetVisibleRowInformationSize();row++)
     {
         wxString type = mSequenceElements->GetVisibleRowInformation(row)->element->GetType();
-        if(type!="view" && type != "model")
-        {
-            DrawTimingEffects(row);
-        }
-    }
-
-    for(int row=0;row<mSequenceElements->GetVisibleRowInformationSize();row++)
-    {
-        wxString type = mSequenceElements->GetVisibleRowInformation(row)->element->GetType();
         wxString name = mSequenceElements->GetVisibleRowInformation(row)->element->GetName();
-        if(type=="view" || type == "model")
-        {
+        if(type!="view" && type != "model") {
+            DrawTimingEffects(row);
+        } else {
             Row_Information_Struct *ri = mSequenceElements->GetVisibleRowInformation(row);
             EffectLayer* effectLayer = mSequenceElements->GetEffectLayer(ri);
             lines.PreAlloc(effectLayer->GetEffectCount() * 16);
@@ -2442,7 +2434,7 @@ void EffectsGrid::DrawEffects()
                     highlight_color = *RowHeading::GetTimingColor(0);
                 }
                 highlight_color.alpha = 128;
-                selectedBoxes.AddRect(mDropStartX,y3,mDropEndX-mDropStartX,DEFAULT_ROW_HEADING_HEIGHT, highlight_color);
+                selectedBoxes.AddRect(mDropStartX,y3,mDropStartX+mDropEndX-mDropStartX,y3+DEFAULT_ROW_HEADING_HEIGHT, highlight_color);
             }
         }
     }
@@ -2454,9 +2446,30 @@ void EffectsGrid::DrawEffects()
     DrawGLUtils::Draw(backgrounds, GL_TRIANGLES);
     DrawGLUtils::Draw(lines, *mEffectColor, GL_LINES);
     DrawGLUtils::Draw(selectedLines, *mSelectionColor, GL_LINES);
+
+    glLineWidth(2.0);
+    DrawGLUtils::Draw(timingEffLines, xlWHITE, GL_LINES);
+    DrawGLUtils::Draw(textBackgrounds, GL_TRIANGLES);
+    glLineWidth(1.0);
+    DrawGLUtils::Draw(timingLines, GL_LINES, GL_BLEND);
+    
+    double fontSize = DEFAULT_ROW_HEADING_HEIGHT - 10;
+    int toffset = 0;
+    if (fontSize < 10) {
+        fontSize = 10;
+        toffset = 2;
+    }
+    double factor = translateToBacking(1.0);
+
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+    DrawGLUtils::Draw(texts, fontSize, factor, GL_BLEND);
     DrawGLUtils::Draw(selectedBoxes, GL_TRIANGLES, GL_BLEND);
+    
+    textBackgrounds.Reset();
+    timingLines.Reset();
+    timingEffLines.Reset();
+    texts.Reset();
     backgrounds.Reset();
     selectedBoxes.Reset();
     selectedLines.Reset();
@@ -2468,11 +2481,13 @@ void EffectsGrid::DrawTimingEffects(int row)
     Row_Information_Struct *ri = mSequenceElements->GetVisibleRowInformation(row);
     Element* element =ri->element;
     EffectLayer* effectLayer=mSequenceElements->GetVisibleEffectLayer(row);
-    xlColor* mEffectColorRight;
-    xlColor* mEffectColorLeft;
-    xlColor* mEffectColorCenter;
-    //if(effectLayer==nullptr)
-    //    return;
+    
+    DrawGLUtils::xlVertexAccumulator * linesRight;
+    DrawGLUtils::xlVertexAccumulator * linesLeft;
+    DrawGLUtils::xlVertexAccumulator * linesCenter;
+    xlColor c(*RowHeading::GetTimingColor(ri->colorIndex));
+    c.alpha = 128;
+
     for(int effectIndex=0;effectIndex < effectLayer->GetEffectCount();effectIndex++)
     {
         EFFECT_SCREEN_MODE mode = SCREEN_L_R_OFF;
@@ -2484,12 +2499,15 @@ void EffectsGrid::DrawTimingEffects(int row)
 
         mTimeline->GetPositionsFromTimeRange(effectLayer->GetEffect(effectIndex)->GetStartTimeMS(),
                                              effectLayer->GetEffect(effectIndex)->GetEndTimeMS(),mode,x1,x2,x3,x4);
-        mEffectColorLeft = effectLayer->GetEffect(effectIndex)->GetSelected() == EFFECT_NOT_SELECTED ||
-                           effectLayer->GetEffect(effectIndex)->GetSelected() == EFFECT_RT_SELECTED?mTimingColor:mSelectionColor;
-        mEffectColorRight = effectLayer->GetEffect(effectIndex)->GetSelected() == EFFECT_NOT_SELECTED ||
-                           effectLayer->GetEffect(effectIndex)->GetSelected() == EFFECT_LT_SELECTED?mTimingColor:mSelectionColor;
-        mEffectColorCenter = effectLayer->GetEffect(effectIndex)->GetSelected() == EFFECT_SELECTED?mSelectionColor:mTimingColor;
 
+        linesLeft = effectLayer->GetEffect(effectIndex)->GetSelected() == EFFECT_NOT_SELECTED ||
+            effectLayer->GetEffect(effectIndex)->GetSelected() == EFFECT_RT_SELECTED?&timingEffLines:&selectedLines;
+        linesRight = effectLayer->GetEffect(effectIndex)->GetSelected() == EFFECT_NOT_SELECTED ||
+            effectLayer->GetEffect(effectIndex)->GetSelected() == EFFECT_LT_SELECTED?&timingEffLines:&selectedLines;
+        linesCenter = effectLayer->GetEffect(effectIndex)->GetSelected() == EFFECT_SELECTED?&selectedLines:&timingEffLines;
+        
+
+        
         if(mode!=SCREEN_L_R_OFF) {
             // Draw Left line
             if(mode==SCREEN_L_R_ON || mode == SCREEN_L_ON)
@@ -2500,40 +2518,42 @@ void EffectsGrid::DrawTimingEffects(int row)
                     // previous effect was not selected, or only left was selected
                     if(effectLayer->GetEffect(effectIndex)->GetStartTimeMS() != effectLayer->GetEffect(effectIndex-1)->GetEndTimeMS() ||
                        effectLayer->GetEffect(effectIndex-1)->GetSelected() == EFFECT_NOT_SELECTED ||
-                        effectLayer->GetEffect(effectIndex-1)->GetSelected() == EFFECT_LT_SELECTED)
-                    {
-                        DrawGLUtils::DrawLine(*mEffectColorLeft,255,x1,y1,x1,y2,2);
+                        effectLayer->GetEffect(effectIndex-1)->GetSelected() == EFFECT_LT_SELECTED) {
+                        linesLeft->AddVertex(x1, y1);
+                        linesLeft->AddVertex(x1, y2);
                     }
                 }
                 else
                 {
-                    DrawGLUtils::DrawLine(*mEffectColorLeft,255,x1,y1,x1,y2,2);
+                    linesLeft->AddVertex(x1, y1);
+                    linesLeft->AddVertex(x1, y2);
                 }
 
                 if(element->GetActive() && ri->layerIndex == 0)
                 {
-                    glEnable(GL_BLEND);
-                    DrawGLUtils::DrawLine(*RowHeading::GetTimingColor(ri->colorIndex),128,x1,(row+1)*DEFAULT_ROW_HEADING_HEIGHT,x1,GetSize().y,1);
-                    glDisable(GL_BLEND);
+                    timingLines.AddVertex(x1,(row+1)*DEFAULT_ROW_HEADING_HEIGHT, c);
+                    timingLines.AddVertex(x1,GetSize().y, c);
                 }
             }
             // Draw Right line
             if(mode==SCREEN_L_R_ON || mode == SCREEN_R_ON)
             {
-                DrawGLUtils::DrawLine(*mEffectColorRight,255,x2,y1,x2,y2,2);
+                linesRight->AddVertex(x2, y1);
+                linesRight->AddVertex(x2, y2);
                 if(element->GetActive() && ri->layerIndex == 0)
                 {
-                    glEnable(GL_BLEND);
-                    DrawGLUtils::DrawLine(*RowHeading::GetTimingColor(ri->colorIndex),128,x2,(row+1)*DEFAULT_ROW_HEADING_HEIGHT,x2,GetSize().y,1);
-                    glDisable(GL_BLEND);
+                    timingLines.AddVertex(x2,(row+1)*DEFAULT_ROW_HEADING_HEIGHT, c);
+                    timingLines.AddVertex(x2,GetSize().y, c);
                 }
             }
             // Draw horizontal
             if(mode!=SCREEN_L_R_OFF)
             {
                 int half_width = (x2-x1)/2;
-                DrawGLUtils::DrawLine(*mEffectColorLeft,255,x1,y,x1+half_width,y,2);
-                DrawGLUtils::DrawLine(*mEffectColorRight,255,x1+half_width,y,x2,y,2);
+                linesLeft->AddVertex(x1, y);
+                linesLeft->AddVertex(x1+half_width,y);
+                linesRight->AddVertex(x1+half_width,y);
+                linesRight->AddVertex(x2,y);
                 if (effectLayer->GetEffect(effectIndex)->GetEffectName() != "" && (x2-x1) > 20 ) {
                     double fontSize = DEFAULT_ROW_HEADING_HEIGHT - 10;
                     int toffset = 0;
@@ -2560,9 +2580,9 @@ void EffectsGrid::DrawTimingEffects(int row)
                     {
                         label_color = mPhonemeColor;
                     }
-                    DrawGLUtils::DrawFillRectangle(*label_color,80,label_start,y1-2,width,y2-y1+4);
-                    DrawGLUtils::DrawRectangle(*mLabelOutlineColor,false,label_start,y1-2,label_start + width,y2+2);
-                    DrawGLUtils::DrawText(label_start + 4, y2-3 + toffset, fontSize, effectLayer->GetEffect(effectIndex)->GetEffectName(), factor);
+                    textBackgrounds.AddRect(label_start,y1-2,label_start+width,y2+2, *label_color);
+                    timingLines.AddLinesRect(label_start,y1-2,label_start+width,y2+2, *mLabelOutlineColor);
+                    texts.AddVertex(label_start + 4, y2-3 + toffset, effectLayer->GetEffect(effectIndex)->GetEffectName());
                 }
             }
         }

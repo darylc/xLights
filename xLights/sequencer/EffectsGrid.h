@@ -170,8 +170,12 @@ private:
     Effect* mSelectedEffect;
     
     DrawGLUtils::xlVertexAccumulator lines;
+    DrawGLUtils::xlVertexAccumulator timingEffLines;
+    DrawGLUtils::xlVertexColorAccumulator timingLines;
+    DrawGLUtils::xlVertexTextAccumulator texts;
     DrawGLUtils::xlVertexAccumulator selectedLines;
     DrawGLUtils::xlVertexColorAccumulator backgrounds;
+    DrawGLUtils::xlVertexColorAccumulator textBackgrounds;
     DrawGLUtils::xlVertexColorAccumulator selectedBoxes;
     std::map<GLuint, DrawGLUtils::xlVertexTextureAccumulator> textures;
 

@@ -69,6 +69,18 @@ namespace DrawGLUtils
             AddVertex(x2, y1, c);
             AddVertex(x1, y1, c);
         }
+        void AddLinesRect(float x1, float y1, float x2, float y2, const xlColor &c) {
+            PreAlloc(8);
+            AddVertex(x1, y1, c);
+            AddVertex(x1, y2, c);
+            AddVertex(x2, y1, c);
+            AddVertex(x2, y2, c);
+            
+            AddVertex(x1, y2, c);
+            AddVertex(x2, y2, c);
+            AddVertex(x1, y1, c);
+            AddVertex(x2, y1, c);
+        }
         std::vector<float> vertices;
         std::vector<uint8_t> colors;
         unsigned int count;
@@ -105,7 +117,26 @@ namespace DrawGLUtils
         uint8_t alpha;
         GLuint id;
     };
-    
+    class xlVertexTextAccumulator {
+    public:
+        xlVertexTextAccumulator() : count(0) {}
+        ~xlVertexTextAccumulator() {}
+        
+        void PreAlloc(unsigned int i) {
+            vertices.reserve(vertices.size() + i*2);
+            text.reserve(text.size() + i);
+        };
+        void Reset() {count = 0; vertices.clear(); text.clear();}
+        void AddVertex(float x, float y, const std::string &s) {
+            vertices.push_back(x); vertices.push_back(y);
+            text.push_back(s);
+            count++;
+        }
+        std::vector<float> vertices;
+        std::vector<std::string> text;
+        unsigned int count;
+    };
+
     class xlGLCacheInfo {
     public:
         xlGLCacheInfo() {};
@@ -165,6 +196,7 @@ namespace DrawGLUtils
     void Draw(xlVertexAccumulator &va, const xlColor & color, int type, int enableCapability = 0);
     void Draw(xlVertexColorAccumulator &va, int type, int enableCapability = 0);
     void Draw(xlVertexTextureAccumulator &va, int type, int enableCapability = 0);
+    void Draw(xlVertexTextAccumulator &va, int size, float factor, int enableCapability = 0);
 
     
     void DrawText(double x, double y, double size, const wxString &text, double factor = 1.0);
