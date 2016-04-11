@@ -572,65 +572,69 @@ void DrawGLUtils::UpdateTexturePixel(GLuint* texture, double x, double y, xlColo
     glDisable(GL_TEXTURE_2D);
 }
 
+
+class FontInfoStruct {
+public:
+    FontInfoStruct(const char * const *d,
+                   float mh, float mw, float md,
+                   std::vector<float> w)
+        : data(d), maxH(mh), maxW(mw), maxD(md), widths(w) {
+        
+    }
+    
+    const char * const *data;
+    float maxH;
+    float maxW;
+    float maxD;
+    std::vector<float> widths;
+};
+#include "fonts/fonts.h"
+
+#ifndef LINUX
+#define USEAA true
+#else
+#define USEAA false
+#endif
+
+#define CASEFONT(x) case x: Load(font##x); break;
+
 class FontTexture {
 public:
     FontTexture() { id = 0;};
     ~FontTexture() {};
 
     bool Valid() { return id != 0;}
+    
     void Create(int size) {
-        wxSize sze(size, size);
-        wxFont font(size, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
-
-        wxGraphicsContext *ctx = wxGraphicsContext::Create();
-        ctx->SetFont(ctx->CreateFont(size, font.GetFaceName(), wxFONTFLAG_ANTIALIASED));
-
-        sze.Set(0, 0);
-        wxString s;
-        descent = 0;
-        lineHeight = 0;
-        int line = 0;
-        for (char c = ' '; c <= '~'; c++) {
-            s += c;
-            s += ' ';
-            if (s.length() == 48 || c == '~') {
-                double width, height, desc, el;
-                ctx->GetTextExtent(s, &width, &height, &desc, &el);
-                sze.SetWidth(std::max((int)width, sze.GetWidth()));
-                lineHeight = std::max(lineHeight, (int)height);
-                descent = std::max(descent, (float)desc);
-                s = "";
-                line++;
-            }
+        switch (size) {
+            CASEFONT(10);
+            CASEFONT(12);
+            CASEFONT(20);
+            CASEFONT(24);
+            CASEFONT(28);
+            CASEFONT(40);
+            CASEFONT(44);
+            CASEFONT(56);
+            CASEFONT(88);
+            default:
+                //printf("No FONT!!!! %d\n", size);
+                ForceCreate(size);
+                break;
         }
-        delete ctx;
-        lineHeight += 2;
-        sze.SetHeight(lineHeight * line);
-
-        wxImage cimg(sze.GetWidth(), sze.GetHeight());
+    }
+    void Load(const FontInfoStruct &fi) {
+        maxW = fi.maxW;
+        maxH = fi.maxH;
+        maxD = fi.maxD;
+        widths = fi.widths;
+        wxImage cimg(fi.data);
         cimg.InitAlpha();
-        ctx = wxGraphicsContext::Create(cimg);
-        ctx->SetAntialiasMode(wxANTIALIAS_DEFAULT);
-        ctx->SetInterpolationQuality(wxInterpolationQuality::wxINTERPOLATION_BEST);
-        ctx->SetCompositionMode(wxCompositionMode::wxCOMPOSITION_OVER);
-        ctx->SetFont(ctx->CreateFont(size, font.GetFaceName(), wxFONTFLAG_ANTIALIASED, *wxWHITE));
-
-        line = 0;
-        for (char c = ' '; c <= '~'; c++) {
-            s += c;
-            s += ' ';
-            if (s.length() == 48 || c == '~') {
-                ctx->DrawText(s, 0, line * lineHeight);
-                ctx->GetPartialTextExtents(s, widths[line]);
-                line++;
-                s = "";
-            }
-        }
-        delete ctx;
-
-
-        for (int x = 0; x < sze.GetWidth(); x++) {
-            for (int y = 0; y < sze.GetHeight(); y++) {
+        InitializeImage(cimg);
+    }
+    
+    void InitializeImage(wxImage &cimg) {
+        for (int x = 0; x < cimg.GetWidth(); x++) {
+            for (int y = 0; y < cimg.GetHeight(); y++) {
                 int alpha = cimg.GetRed(x, y);
                 if (alpha) {
                     cimg.SetRGB(x, y, 0, 0, 0);
@@ -641,10 +645,78 @@ public:
                 }
             }
         }
-
-
         image.load(cimg);
         id = *image.getID();
+    }
+    void ForceCreate(int size) {
+        wxFont font(size, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+
+        wxGraphicsContext *ctx = wxGraphicsContext::Create();
+        ctx->SetFont(ctx->CreateFont(size, font.GetFaceName(), wxFONTFLAG_ANTIALIASED));
+        maxW = 0;
+        maxH = 0;
+        maxD = 0;
+        for (char c = ' '; c <= '~'; c++) {
+            wxString s = c;
+            double width, height, desc, el;
+            ctx->GetTextExtent(s, &width, &height, &desc, &el);
+            maxW = std::max(maxW, (float)width);
+            maxH = std::max(maxH, (float)height);
+            maxD = std::max(maxD, (float)desc);
+        }
+        delete ctx;
+        
+        wxImage cimg((maxW + 5) * 24, (maxH + 5) * 4);
+        cimg.InitAlpha();
+        ctx = wxGraphicsContext::Create(cimg);
+        ctx->SetInterpolationQuality(wxInterpolationQuality::wxINTERPOLATION_BEST);
+        ctx->SetCompositionMode(wxCompositionMode::wxCOMPOSITION_OVER);
+
+        if (USEAA) {
+            ctx->SetAntialiasMode(wxANTIALIAS_DEFAULT);
+            ctx->SetFont(ctx->CreateFont(size, font.GetFaceName(), wxFONTFLAG_ANTIALIASED, *wxWHITE));
+            //ctx->SetFont(ctx->CreateFont(size, "Gil Sans", wxFONTFLAG_ANTIALIASED, *wxWHITE));
+        } else {
+            ctx->SetAntialiasMode(wxANTIALIAS_NONE);
+            ctx->SetFont(ctx->CreateFont(size, font.GetFaceName(), wxFONTFLAG_NOT_ANTIALIASED, *wxWHITE));
+            //ctx->SetFont(ctx->CreateFont(size, "Gil Sans", wxFONTFLAG_NOT_ANTIALIASED, *wxWHITE));
+        }
+        
+        
+        int count = 0;
+        int line = 0;
+        widths.clear();
+        widths.resize('~' - ' ' + 1);
+        for (char c = ' '; c <= '~'; c++) {
+            wxString s = c;
+            ctx->DrawText(s, 1 + (count * (maxW + 5)), 1 + line * (maxH + 5));
+            
+            double width, height, desc, el;
+            ctx->GetTextExtent(s, &width, &height, &desc, &el);
+            widths[c - ' '] = width;
+            count++;
+            if (count == 24) {
+                line++;
+                count = 0;
+            }
+        }
+        delete ctx;
+
+        
+         //used to output data that can be used to static generation above
+        /*
+        wxString fn = wxString::Format("/tmp/font_%d.xpm", size);
+        cimg.SaveFile(fn, wxBITMAP_TYPE_XPM);
+        printf("#include \"font_%d.xpm\"\n", size);
+        printf("static FontInfoStruct font%d(font_%d_xpm, %f, %f, %f, {\n", size, size, maxH, maxW, maxD);
+        printf("%f", widths[0]);
+        for (int x = 1; x < widths.size(); x++) {
+            printf(", %f", widths[x]);
+        }
+        printf("});\n");
+         */
+        
+        InitializeImage(cimg);
     }
     void Populate(float x, float yBase, const wxString &text, float factor, DrawGLUtils::xlVertexTextureAccumulator &va) {
         va.PreAlloc(6 * text.Length());
@@ -653,36 +725,47 @@ public:
         for (int idx = 0; idx < text.Length(); idx++) {
             char ch = text[idx];
             if (ch >= ' ' && ch <= '~') {
+                if (ch == ' ') {
+                    x += widths[0] / factor;
+                    continue;
+                }
                 int line = ch;
                 line -= ' ';
                 line /= 24;
-                int pos = ch;
+
+                int pos = ch - ' ';
                 pos -= line * 24;
-                pos -= ' ';
-                pos *= 2;
 
-                float start = 0;
-                if (pos > 0) {
-                    start = widths[line][pos - 1];
-                }
-                float tx = start - 0.5;
+                float tx = 0.5 + (pos * (maxW + 5));
+                float tx2 = tx + widths[ch - ' '] + 0.5;
+
                 tx /= image.textureWidth;
-
-                float ty2 = line * lineHeight;
+                tx2 /= image.textureWidth;
+                
+                float x2 = x + float(widths[ch - ' '] + 0.5) / factor;
+                
+                float ty2 = line * (maxH + 5);
+                float ty = ty2 + maxH + 2;
                 ty2 /= image.textureHeight;
                 ty2 = image.tex_coord_y - ty2;
-
-                float tx2 = widths[line][pos] + 0.5;
-                tx2 /= image.textureWidth;
-
-                float ty = (line + 1) * (lineHeight) - 2;
                 ty /= image.textureHeight;
                 ty = image.tex_coord_y - ty;
 
-                float y = yBase + float(descent) / factor;
-                float x2 = x + float(widths[line][pos] - start + 1) / factor;
-                float y2 = yBase - (float(lineHeight - descent - 2) / factor);
-
+                float y = yBase;
+                float y2 = y - (float(maxH) + 2) / factor;
+                
+                /*
+                if (ch == '1') {
+                    DrawGLUtils::DrawFillRectangle(xlWHITE, 255,x,y, image.textureWidth / factor, image.textureHeight / factor);
+                    
+                    ty = 0; ty2 = 1.0;
+                    tx = 0; tx2 = 1.0;
+                    y = yBase + (float)image.textureHeight/factor;
+                    x2 = x + (float)image.textureWidth / factor;
+                    y2 = yBase;
+                }
+                printf("%c   %f %f    %f %f\n", ch, tx, tx2, ty, ty2);
+                */
                 va.AddVertex(x - 0.4, y, tx, ty);
                 va.AddVertex(x - 0.4, y2, tx, ty2);
                 va.AddVertex(x2 - 0.4, y2, tx2, ty2);
@@ -690,21 +773,7 @@ public:
                 va.AddVertex(x2 - 0.4, y, tx2, ty);
                 va.AddVertex(x - 0.4, y, tx, ty);
 
-                /*
-                DrawGLUtils::DrawTexture(&id, x, yBase + float(descent) / factor,
-                                         x + float(widths[line][pos] - start + 1) / factor, yBase - (float(lineHeight - descent - 2) / factor),
-                                         tx, ty, tx2, ty2);
-                if (ch == '1') {
-                    DrawGLUtils::DrawFillRectangle(xlWHITE, 255,x,y, image.textureWidth, image.textureHeight);
-                    DrawGLUtils::DrawTexture(&id, x, y + image.textureHeight,
-                                             x + image.textureWidth, y,
-                                             0, 0, 1, 1);
-
-                }
-                */
-
-
-                x += (widths[line][pos] - start + 0.5) / factor;
+                x += (widths[ch - ' '] + 0.5) / factor;
             }
         }
 
@@ -722,28 +791,15 @@ public:
         for (int idx = 0; idx < text.Length(); idx++) {
             char ch = text[idx];
             if (ch >= ' ' && ch <= '~') {
-                int line = ch;
-                line -= ' ';
-                line /= 24;
-                int pos = ch;
-                pos -= line * 24;
-                pos -= ' ';
-                pos *= 2;
-
-                float start = 0;
-                if (pos > 0) {
-                    start = widths[line][pos - 1];
-                }
-                w += (widths[line][pos] - start + 0.5) / factor;
+                w += (widths[ch - ' '] + 0.5) / factor;
             }
         }
         return w;
     }
 
     Image image;
-    int lineHeight;
-    float descent;
-    std::map<int, wxArrayDouble> widths;
+    float maxD, maxW, maxH;
+    std::vector<float> widths;
     GLuint id;
 };
 static std::map<unsigned int, FontTexture> FONTS;

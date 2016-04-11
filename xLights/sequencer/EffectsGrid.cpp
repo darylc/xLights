@@ -2582,7 +2582,7 @@ void EffectsGrid::DrawTimingEffects(int row)
                     }
                     textBackgrounds.AddRect(label_start,y1-2,label_start+width,y2+2, *label_color);
                     timingLines.AddLinesRect(label_start,y1-2,label_start+width,y2+2, *mLabelOutlineColor);
-                    texts.AddVertex(label_start + 4, y2-3 + toffset, effectLayer->GetEffect(effectIndex)->GetEffectName());
+                    texts.AddVertex(label_start + 4, y2 + toffset, effectLayer->GetEffect(effectIndex)->GetEffectName());
                 }
             }
         }
