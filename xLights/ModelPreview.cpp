@@ -246,25 +246,42 @@ bool ModelPreview::StartDrawing(wxDouble pointSize)
            image = new Image(mBackgroundImage);
            sprite = new xLightsDrawable(image);
         }
-        DrawGLUtils::PushMatrix();
-        double scaleh= double(virtualHeight) / double(image->height);
-        double scalew = double(virtualWidth) / double(image->width);
-        if (scaleImage) {
-            DrawGLUtils::Scale(scalew, scaleh, 1.0);
-        } else {
-            if (scalew < scaleh) {
-                scaleh = scalew;
+        float scaleh = 1.0;
+        float scalew = 1.0;
+        if (!scaleImage) {
+            float nscaleh = float(image->height) / float(virtualHeight);
+            float nscalew = float(image->width) / float(virtualWidth);
+            if (nscalew < nscaleh) {
+                scaleh = 1.0;
+                scalew = nscalew / nscaleh;
+            } else {
+                scaleh = nscaleh / nscalew;
+                scalew = 1.0;
             }
-            DrawGLUtils::Scale(scaleh, scaleh, 1.0);
         }
-        sprite->render();
-        DrawGLUtils::PopMatrix();
+        DrawGLUtils::xlVertexTextureAccumulator va(*image->getID());
+        va.PreAlloc(6);
+        float tx1 = 0;
+        float tx2 = image->tex_coord_x;
+        va.AddVertex(0, 0, tx1, -0.5/(image->textureHeight));
+        va.AddVertex(virtualWidth * scalew, 0, tx2, -0.5/(image->textureHeight));
+        va.AddVertex(0, virtualHeight * scaleh, tx1, image->tex_coord_y);
         
+        va.AddVertex(0, virtualHeight * scaleh, tx1, image->tex_coord_y);
+        va.AddVertex(virtualWidth * scalew, 0, tx2, -0.5/(image->textureHeight));
+        va.AddVertex(virtualWidth * scalew, virtualHeight *scaleh, tx2, image->tex_coord_y);
+        
+        int i = mBackgroundBrightness * 255 / 100;
+        va.alpha = i;
+        DrawGLUtils::Draw(va, GL_TRIANGLES, 0);
+        
+        /*
         if (mBackgroundBrightness < 100) {
             int b = (100 - mBackgroundBrightness) * 255;
             b /= 100;
             DrawGLUtils::DrawFillRectangle(xlBLACK, b, 0, 0, virtualWidth, virtualHeight);
         }
+         */
     }
     return true;
 }

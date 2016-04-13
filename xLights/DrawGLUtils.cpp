@@ -98,7 +98,23 @@ public:
 
         glTexCoordPointer(2, GL_FLOAT, 0, &va.tvertices[0]);
         glVertexPointer(2, GL_FLOAT, 0, &va.vertices[0]);
-        glDrawArrays(type, 0, va.count);
+        
+        if (va.alpha != 255) {
+            float intensity = va.alpha;
+            intensity /= 255;
+            if (intensity > 1.0) {
+                intensity = 1.0;
+            } else if (intensity < 0) {
+                intensity = 0;
+            }
+            glColor4f(1.0, 1.0, 1.0, intensity);
+            glDrawArrays(type, 0, va.count);
+            glColor4f(1.0, 1.0, 1.0, 1.0);
+        } else {
+            glDrawArrays(type, 0, va.count);
+        }
+        
+        
 
         glDisableClientState(GL_VERTEX_ARRAY);
         glDisableClientState(GL_TEXTURE_COORD_ARRAY);

@@ -78,8 +78,9 @@ public:
             "#version 120\n"
             "varying vec2 textCoord;\n"
             "uniform sampler2D tex;\n"
+            "uniform vec4 inColor;\n"
             "void main(){\n"
-            "    gl_FragColor = texture2D(tex, textCoord);\n"
+            "    gl_FragColor = vec4(texture2D(tex, textCoord).rgb, texture2D(tex, textCoord).a * inColor.a);\n"
             "}\n");
 
         ProgramIDtexture = LinkProgram(VertexShaderIDtx, FragmentShaderIDtxt);
@@ -215,6 +216,10 @@ public:
         
         glUniform1i(glGetUniformLocation(ProgramIDtexture, "tex"), 0);
 
+        GLuint cid = glGetUniformLocation(ProgramIDtexture, "inColor");
+        glUniform4f(cid, 1.0, 1.0, 1.0, ((float)va.alpha)/255.0);
+
+        
         glActiveTexture(GL_TEXTURE0); //switch to texture image unit 0
         glBindTexture(GL_TEXTURE_2D, va.id);
         
