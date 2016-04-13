@@ -21,6 +21,7 @@
 #include "DrawGLUtils.h"
 #include "osxMacUtils.h"
 #include <wx/graphics.h>
+#include <wx/dcgraph.h>
 
 #include <map>
 #include "Image.h"
@@ -596,6 +597,9 @@ public:
 #define USEAA false
 #endif
 
+#define NUMLINES 6
+#define NUMCHARS 16
+
 #define CASEFONT(x) case x: Load(font##x); break;
 
 class FontTexture {
@@ -609,6 +613,7 @@ public:
         switch (size) {
             CASEFONT(10);
             CASEFONT(12);
+            CASEFONT(16);
             CASEFONT(20);
             CASEFONT(24);
             CASEFONT(28);
@@ -617,7 +622,7 @@ public:
             CASEFONT(56);
             CASEFONT(88);
             default:
-                //printf("No FONT!!!! %d\n", size);
+                printf("No FONT!!!! %d\n", size);
                 ForceCreate(size);
                 break;
         }
@@ -649,10 +654,23 @@ public:
         id = *image.getID();
     }
     void ForceCreate(int size) {
-        wxFont font(size, wxFONTFAMILY_SWISS, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL);
+        wxString faceName = "Gil Sans";
+        
+        bool useAA = USEAA;
+        if (size <= 12)  {
+            useAA = false;
+        }
 
         wxGraphicsContext *ctx = wxGraphicsContext::Create();
-        ctx->SetFont(ctx->CreateFont(size, font.GetFaceName(), wxFONTFLAG_ANTIALIASED));
+        ctx->SetInterpolationQuality(wxInterpolationQuality::wxINTERPOLATION_BEST);
+        ctx->SetCompositionMode(wxCompositionMode::wxCOMPOSITION_OVER);
+        if (useAA) {
+            ctx->SetAntialiasMode(wxANTIALIAS_DEFAULT);
+            ctx->SetFont(ctx->CreateFont(size, faceName, wxFONTFLAG_ANTIALIASED, *wxWHITE));
+        } else {
+            ctx->SetAntialiasMode(wxANTIALIAS_NONE);
+            ctx->SetFont(ctx->CreateFont(size, faceName, wxFONTFLAG_NOT_ANTIALIASED, *wxWHITE));
+        }
         maxW = 0;
         maxH = 0;
         maxD = 0;
@@ -666,20 +684,51 @@ public:
         }
         delete ctx;
         
-        wxImage cimg((maxW + 5) * 24, (maxH + 5) * 4);
+        maxW += 1.0; // allow room to possibly have to handle some kerning
+        
+        
+        int imgh = (maxH + 5) * 6;
+        int imgw = (maxW + 5) * 16;
+        float power_of_two_that_gives_correct_width=std::log((float)imgw)/std::log(2.0);
+        float power_of_two_that_gives_correct_height=std::log((float)imgh)/std::log(2.0);
+        imgw=(int)std::pow( 2.0, (int)(std::ceil(power_of_two_that_gives_correct_width)) );
+        imgh=(int)std::pow( 2.0, (int)(std::ceil(power_of_two_that_gives_correct_height)) );
+
+        
+        wxImage cimg(imgw, imgh);
         cimg.InitAlpha();
+
+        /*
         ctx = wxGraphicsContext::Create(cimg);
+        ctx->SetAntialiasMode(wxANTIALIAS_NONE);
+        ctx->SetPen( wxPen(wxColor(92, 92, 92), 0) );
+        for (int l = 0; l < NUMLINES; l++) {
+            for (int x = 0; x < (maxH + 5); x += 2) {
+                wxPoint2DDouble beginPoints(0, x + l * (maxH+5));
+                wxPoint2DDouble endPoints((maxW + 5)*NUMCHARS, x + l * (maxH+5));
+                ctx->StrokeLines(1, &beginPoints, &endPoints);
+            }
+        }
+        for (int l = 0; l < NUMCHARS; l++) {
+            wxPoint2DDouble beginPoints(l * (maxW+5), 0);
+            wxPoint2DDouble endPoints(l * (maxW + 5), (NUMLINES + 1) * (maxH+5));
+            ctx->StrokeLines(1, &beginPoints, &endPoints);
+        }
+        delete ctx;
+         */
+        
+        
+        ctx = wxGraphicsContext::Create(cimg);
+        ctx->SetPen( *wxWHITE_PEN );
         ctx->SetInterpolationQuality(wxInterpolationQuality::wxINTERPOLATION_BEST);
         ctx->SetCompositionMode(wxCompositionMode::wxCOMPOSITION_OVER);
 
-        if (USEAA) {
+        if (useAA) {
             ctx->SetAntialiasMode(wxANTIALIAS_DEFAULT);
-            ctx->SetFont(ctx->CreateFont(size, font.GetFaceName(), wxFONTFLAG_ANTIALIASED, *wxWHITE));
-            //ctx->SetFont(ctx->CreateFont(size, "Gil Sans", wxFONTFLAG_ANTIALIASED, *wxWHITE));
+            ctx->SetFont(ctx->CreateFont(size, faceName, wxFONTFLAG_ANTIALIASED, *wxWHITE));
         } else {
             ctx->SetAntialiasMode(wxANTIALIAS_NONE);
-            ctx->SetFont(ctx->CreateFont(size, font.GetFaceName(), wxFONTFLAG_NOT_ANTIALIASED, *wxWHITE));
-            //ctx->SetFont(ctx->CreateFont(size, "Gil Sans", wxFONTFLAG_NOT_ANTIALIASED, *wxWHITE));
+            ctx->SetFont(ctx->CreateFont(size, faceName, wxFONTFLAG_NOT_ANTIALIASED, *wxWHITE));
         }
         
         
@@ -689,19 +738,55 @@ public:
         widths.resize('~' - ' ' + 1);
         for (char c = ' '; c <= '~'; c++) {
             wxString s = c;
-            ctx->DrawText(s, 1 + (count * (maxW + 5)), 1 + line * (maxH + 5));
+            ctx->DrawText(s, 2 + (count * (maxW + 5)), 2 + line * (maxH + 5));
             
             double width, height, desc, el;
             ctx->GetTextExtent(s, &width, &height, &desc, &el);
             widths[c - ' '] = width;
             count++;
-            if (count == 24) {
-                line++;
+            if (count == 16) {
                 count = 0;
+                line++;
             }
         }
         delete ctx;
 
+        
+        for (int l = 0; l < NUMLINES; l++) {
+            for (int c = 0; c < NUMCHARS; c++) {
+                bool kerned = false;
+                for (int y = 0; y < (maxH + 3) && !kerned; y++) {
+                    int notblack = cimg.GetRed(2 + c * (maxW + 5), y + 1 + l * (maxH + 5));
+                    if (notblack) {
+                        //the antialiasing has caused part of the pixel to bleed to the left
+                        //we need to move the entire thing to the right
+                        kerned = true;
+                    }
+                }
+                char ch = (l * NUMCHARS + c);
+                if (kerned) {
+                    for (int x = (maxW-1); x > 1; x--) {
+                        int xpos = c * (maxW + 5) + x;
+                        for (int y = 1; y <= (maxH + 4); y++) {
+                            int ypos = y  + l * (maxH + 5);
+                            int clr = cimg.GetRed(xpos - 1, ypos);
+                            cimg.SetRGB(xpos, ypos, clr, clr, clr);
+                        }
+                    }
+                    for (int y = 1; y <= (maxH + 4); y++) {
+                        int ypos = y  + l * (maxH + 5);
+                        cimg.SetRGB(c * (maxW + 5) + 1, ypos, 0, 0, 0);
+                    }
+                    widths[ch] += 1.0;
+                }
+                /*
+                if ((ch + ' ') == 'j') {
+                    printf("%f  %f\n", c * (maxW + 5) + 1, widths[ch]);
+                }
+                 */
+            }
+        }
+        
         
          //used to output data that can be used to static generation above
         /*
@@ -714,14 +799,15 @@ public:
             printf(", %f", widths[x]);
         }
         printf("});\n");
-         */
+        */
         
         InitializeImage(cimg);
     }
     void Populate(float x, float yBase, const wxString &text, float factor, DrawGLUtils::xlVertexTextureAccumulator &va) {
         va.PreAlloc(6 * text.Length());
         va.id = id;
-
+        //DrawGLUtils::DrawLine(xlBLUE, 255, x, yBase, x+3, yBase, 1);
+        //DrawGLUtils::DrawLine(xlBLUE, 255, x, yBase - (float(maxH) + 2) / factor, x+3, yBase - (float(maxH) + 2) / factor, 1);
         for (int idx = 0; idx < text.Length(); idx++) {
             char ch = text[idx];
             if (ch >= ' ' && ch <= '~') {
@@ -729,51 +815,66 @@ public:
                     x += widths[0] / factor;
                     continue;
                 }
-                int line = ch;
-                line -= ' ';
-                line /= 24;
+                int linei = ch;
+                linei -= ' ';
+                linei /= 16.0;
+                float line = linei;
 
-                int pos = ch - ' ';
-                pos -= line * 24;
+                float pos = ch - ' ';
+                pos -= linei * 16.0;
 
-                float tx = 0.5 + (pos * (maxW + 5));
-                float tx2 = tx + widths[ch - ' '] + 0.5;
-
+                float tx = 1 + (pos * (maxW + 5));
+                float tx2 = tx + widths[ch - ' '];
+                
+                float x2 = x + float(widths[ch - ' ']) / factor;
+                
+                float ty2 = image.textureHeight - 3 - (line * (maxH + 5));
+                float ty = ty2 - maxH;
+                
+                float y = yBase;
+                float y2 = yBase - float(maxH) / factor;
+                /*
+                if (ch == 'p') {
+                    printf("%c   %f %f    %f %f     %f %f\n", ch, x, x2, tx, tx2,  (x2-x), (tx2-tx));
+                }
+                 */
+                
                 tx /= image.textureWidth;
                 tx2 /= image.textureWidth;
                 
-                float x2 = x + float(widths[ch - ' '] + 0.5) / factor;
+                ty2 /= (image.textureHeight - 1);
+                ty /= (image.textureHeight - 1);
                 
-                float ty2 = line * (maxH + 5);
-                float ty = ty2 + maxH + 2;
-                ty2 /= image.textureHeight;
-                ty2 = image.tex_coord_y - ty2;
-                ty /= image.textureHeight;
-                ty = image.tex_coord_y - ty;
-
-                float y = yBase;
-                float y2 = y - (float(maxH) + 2) / factor;
+                //samples need to be from the MIDDLE of the pixel
+                ty += 0.5 / image.textureHeight;
+                ty2 += 0.5 / image.textureHeight;
+                tx += 0.5 / image.textureWidth;
+                tx2 += 1.0 / image.textureWidth;
                 
                 /*
                 if (ch == '1') {
                     DrawGLUtils::DrawFillRectangle(xlWHITE, 255,x,y, image.textureWidth / factor, image.textureHeight / factor);
                     
-                    ty = 0; ty2 = 1.0;
-                    tx = 0; tx2 = 1.0;
-                    y = yBase + (float)image.textureHeight/factor;
-                    x2 = x + (float)image.textureWidth / factor;
+                    ty = 0.0;
+                    ty2 = 1.0 - ty;
+                    tx = 0.0;
+                    tx2 = 1.0 - tx;
+                    y = yBase + (float)(image.textureHeight)/factor;
+                    x2 = x + (float)(image.textureWidth)/ factor;
                     y2 = yBase;
                 }
-                printf("%c   %f %f    %f %f\n", ch, tx, tx2, ty, ty2);
                 */
-                va.AddVertex(x - 0.4, y, tx, ty);
-                va.AddVertex(x - 0.4, y2, tx, ty2);
-                va.AddVertex(x2 - 0.4, y2, tx2, ty2);
-                va.AddVertex(x2 - 0.4, y2, tx2, ty2);
-                va.AddVertex(x2 - 0.4, y, tx2, ty);
-                va.AddVertex(x - 0.4, y, tx, ty);
+                //printf("%c   %f %f    %f %f\n", ch, tx, tx2, ty, ty2);
+                
+                va.AddVertex(x-0.25/factor, y, tx, ty);
+                va.AddVertex(x-0.25/factor, y2, tx, ty2);
+                va.AddVertex(x2+0.25/factor, y2, tx2, ty2);
+                va.AddVertex(x2+0.25/factor, y2, tx2, ty2);
+                va.AddVertex(x2+0.25/factor, y, tx2, ty);
+                va.AddVertex(x-0.25/factor, y, tx, ty);
 
-                x += (widths[ch - ' '] + 0.5) / factor;
+                x += widths[ch - ' '] / factor;
+                x += 0.5 / factor;
             }
         }
 
@@ -791,12 +892,12 @@ public:
         for (int idx = 0; idx < text.Length(); idx++) {
             char ch = text[idx];
             if (ch >= ' ' && ch <= '~') {
-                w += (widths[ch - ' '] + 0.5) / factor;
+                w += widths[ch - ' '] + 0.5;
             }
         }
-        return w;
+        return w / factor;
     }
-
+    
     Image image;
     float maxD, maxW, maxH;
     std::vector<float> widths;
@@ -824,6 +925,14 @@ void DrawGLUtils::Draw(DrawGLUtils::xlVertexTextAccumulator &va, int size, float
     if (!FONTS[tsize].Valid()) {
         FONTS[tsize].Create(tsize);
     }
+    /*
+    if (tsize == 10 || tsize == 12) {
+        for (int i = 0; i < va.count; i++) {
+            
+        }
+        return;
+    }
+     */
     DrawGLUtils::xlVertexTextureAccumulator vat;
     for (int x = 0; x < va.count; x++) {
         FONTS[tsize].Populate(va.vertices[x*2], va.vertices[x*2 + 1], va.text[x], factor, vat);

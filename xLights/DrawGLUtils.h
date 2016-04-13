@@ -73,13 +73,13 @@ namespace DrawGLUtils
             PreAlloc(8);
             AddVertex(x1, y1, c);
             AddVertex(x1, y2, c);
-            AddVertex(x2, y1, c);
             AddVertex(x2, y2, c);
+            AddVertex(x2, y1, c);
             
             AddVertex(x1, y2, c);
             AddVertex(x2, y2, c);
-            AddVertex(x1, y1, c);
             AddVertex(x2, y1, c);
+            AddVertex(x1, y1, c);
         }
         std::vector<float> vertices;
         std::vector<uint8_t> colors;

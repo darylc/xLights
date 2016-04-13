@@ -2453,13 +2453,15 @@ void EffectsGrid::DrawEffects()
     glLineWidth(1.0);
     DrawGLUtils::Draw(timingLines, GL_LINES, GL_BLEND);
     
-    double fontSize = DEFAULT_ROW_HEADING_HEIGHT - 10;
-    int toffset = 0;
-    if (fontSize < 10) {
-        fontSize = 10;
-        toffset = 2;
-    }
     double factor = translateToBacking(1.0);
+    double fontSize = DEFAULT_ROW_HEADING_HEIGHT - 10;
+    if (fontSize < 10) {
+        if (factor > 1.5) {
+            fontSize = 8;
+        } else {
+            fontSize = 10;
+        }
+    }
 
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
@@ -2487,6 +2489,20 @@ void EffectsGrid::DrawTimingEffects(int row)
     DrawGLUtils::xlVertexAccumulator * linesCenter;
     xlColor c(*RowHeading::GetTimingColor(ri->colorIndex));
     c.alpha = 128;
+
+    
+    double factor = translateToBacking(1.0);
+    double fontSize = DEFAULT_ROW_HEADING_HEIGHT - 10;    
+    int toffset = 0;
+    if (fontSize < 10) {
+        if (factor > 1.5) {
+            fontSize = 8;
+            toffset = 1;
+        } else {
+            fontSize = 10;
+            toffset = 2;
+        }
+    }
 
     for(int effectIndex=0;effectIndex < effectLayer->GetEffectCount();effectIndex++)
     {
@@ -2555,13 +2571,6 @@ void EffectsGrid::DrawTimingEffects(int row)
                 linesRight->AddVertex(x1+half_width,y);
                 linesRight->AddVertex(x2,y);
                 if (effectLayer->GetEffect(effectIndex)->GetEffectName() != "" && (x2-x1) > 20 ) {
-                    double fontSize = DEFAULT_ROW_HEADING_HEIGHT - 10;
-                    int toffset = 0;
-                    if (fontSize < 10) {
-                        fontSize = 10;
-                        toffset = 2;
-                    }
-                    double factor = translateToBacking(1.0);
                     int max_width = x2-x1-18;
                     int text_width = DrawGLUtils::GetTextWidth(fontSize, effectLayer->GetEffect(effectIndex)->GetEffectName(), factor) + 8;
                     int width = std::min(text_width, max_width);
@@ -2581,7 +2590,7 @@ void EffectsGrid::DrawTimingEffects(int row)
                         label_color = mPhonemeColor;
                     }
                     textBackgrounds.AddRect(label_start,y1-2,label_start+width,y2+2, *label_color);
-                    timingLines.AddLinesRect(label_start,y1-2,label_start+width,y2+2, *mLabelOutlineColor);
+                    timingLines.AddLinesRect(label_start-0.4,y1-2-0.4,label_start+width+0.4,y2+2+0.4, *mLabelOutlineColor);
                     texts.AddVertex(label_start + 4, y2 + toffset, effectLayer->GetEffect(effectIndex)->GetEffectName());
                 }
             }
