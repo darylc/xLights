@@ -2242,6 +2242,20 @@ int EffectsGrid::DrawEffectBackground(const Row_Information_Struct* ri, const Ef
     return ef == nullptr ? 1 : ef->DrawEffectBackground(e, x1, y1, x2, y2, backgrounds);
 }
 
+float ComputeFontSize(int &toffset, const float factor) {
+    double fontSize = DEFAULT_ROW_HEADING_HEIGHT - 10;
+    toffset = 0;
+    if (fontSize < 10) {
+        if (factor > 1.5) {
+            fontSize = 9;
+            toffset = 1;
+        } else {
+            fontSize = 10;
+            toffset = 2;
+        }
+    }
+    return fontSize;
+}
 void EffectsGrid::DrawEffects()
 {
     int width = getWidth();
@@ -2453,15 +2467,9 @@ void EffectsGrid::DrawEffects()
     glLineWidth(1.0);
     DrawGLUtils::Draw(timingLines, GL_LINES, GL_BLEND);
     
-    double factor = translateToBacking(1.0);
-    double fontSize = DEFAULT_ROW_HEADING_HEIGHT - 10;
-    if (fontSize < 10) {
-        if (factor > 1.5) {
-            fontSize = 8;
-        } else {
-            fontSize = 10;
-        }
-    }
+    float factor = translateToBacking(1.0);
+    int toffset;
+    float fontSize = ComputeFontSize(toffset, factor);
 
     glDisable(GL_DEPTH_TEST);
     glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
@@ -2490,19 +2498,9 @@ void EffectsGrid::DrawTimingEffects(int row)
     xlColor c(*RowHeading::GetTimingColor(ri->colorIndex));
     c.alpha = 128;
 
-    
-    double factor = translateToBacking(1.0);
-    double fontSize = DEFAULT_ROW_HEADING_HEIGHT - 10;    
     int toffset = 0;
-    if (fontSize < 10) {
-        if (factor > 1.5) {
-            fontSize = 8;
-            toffset = 1;
-        } else {
-            fontSize = 10;
-            toffset = 2;
-        }
-    }
+    float factor = translateToBacking(1.0);
+    float fontSize = ComputeFontSize(toffset, factor);
 
     for(int effectIndex=0;effectIndex < effectLayer->GetEffectCount();effectIndex++)
     {

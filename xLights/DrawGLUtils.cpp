@@ -630,6 +630,7 @@ public:
             CASEFONT(10);
             CASEFONT(12);
             CASEFONT(16);
+            CASEFONT(18);
             CASEFONT(20);
             CASEFONT(24);
             CASEFONT(28);
@@ -652,7 +653,7 @@ public:
         cimg.InitAlpha();
         InitializeImage(cimg);
     }
-    
+
     void InitializeImage(wxImage &cimg) {
         for (int x = 0; x < cimg.GetWidth(); x++) {
             for (int y = 0; y < cimg.GetHeight(); y++) {
@@ -674,7 +675,7 @@ public:
         
         bool useAA = USEAA;
         if (size <= 12)  {
-            useAA = false;
+            //useAA = false;
         }
 
         wxGraphicsContext *ctx = wxGraphicsContext::Create();
@@ -771,15 +772,16 @@ public:
         for (int l = 0; l < NUMLINES; l++) {
             for (int c = 0; c < NUMCHARS; c++) {
                 bool kerned = false;
+                char ch = (l * NUMCHARS + c);
                 for (int y = 0; y < (maxH + 3) && !kerned; y++) {
                     int notblack = cimg.GetRed(2 + c * (maxW + 5), y + 1 + l * (maxH + 5));
                     if (notblack) {
                         //the antialiasing has caused part of the pixel to bleed to the left
                         //we need to move the entire thing to the right
                         kerned = true;
+                        //printf("Kerned: %c\n", (ch + ' '));
                     }
                 }
-                char ch = (l * NUMCHARS + c);
                 if (kerned) {
                     for (int x = (maxW-1); x > 1; x--) {
                         int xpos = c * (maxW + 5) + x;
@@ -858,16 +860,21 @@ public:
                 tx /= image.textureWidth;
                 tx2 /= image.textureWidth;
                 
-                ty2 /= (image.textureHeight - 1);
-                ty /= (image.textureHeight - 1);
+                ty2 /= image.textureHeight;
+                ty /= image.textureHeight;
                 
                 //samples need to be from the MIDDLE of the pixel
-                ty += 0.5 / image.textureHeight;
-                ty2 += 0.5 / image.textureHeight;
+                ty -= 0.5 / image.textureHeight;
+                ty2 += 0.75 / image.textureHeight;
+                
                 tx += 0.5 / image.textureWidth;
                 tx2 += 1.0 / image.textureWidth;
                 
-                /*
+                y += 0.25/factor;
+                y2 -= 0.75/factor;
+                x -= 0.25/factor;
+                x2 += 0.25/factor;
+                
                 if (ch == '1') {
                     DrawGLUtils::DrawFillRectangle(xlWHITE, 255,x,y, image.textureWidth / factor, image.textureHeight / factor);
                     
@@ -879,15 +886,15 @@ public:
                     x2 = x + (float)(image.textureWidth)/ factor;
                     y2 = yBase;
                 }
-                */
+                
                 //printf("%c   %f %f    %f %f\n", ch, tx, tx2, ty, ty2);
                 
-                va.AddVertex(x-0.25/factor, y, tx, ty);
-                va.AddVertex(x-0.25/factor, y2, tx, ty2);
-                va.AddVertex(x2+0.25/factor, y2, tx2, ty2);
-                va.AddVertex(x2+0.25/factor, y2, tx2, ty2);
-                va.AddVertex(x2+0.25/factor, y, tx2, ty);
-                va.AddVertex(x-0.25/factor, y, tx, ty);
+                va.AddVertex(x, y, tx, ty);
+                va.AddVertex(x, y2, tx, ty2);
+                va.AddVertex(x2, y2, tx2, ty2);
+                va.AddVertex(x2, y2, tx2, ty2);
+                va.AddVertex(x2, y, tx2, ty);
+                va.AddVertex(x, y, tx, ty);
 
                 x += widths[ch - ' '] / factor;
                 x += 0.5 / factor;
