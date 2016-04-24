@@ -333,6 +333,14 @@ public:
                            bool setDefaults);
     void SetEffectControls(const SettingsMap &settings);
 	void ApplySetting(wxString name, wxString value);
+    void LoadPerspectivesMenu(wxXmlNode* perspectivesNode);
+    struct PerspectiveId {
+        int id;
+        wxXmlNode* p;
+    };
+
+    PerspectiveId perspectives[10];
+    void OnMenuItemLoadPerspectiveSelected(wxCommandEvent& event);
 	bool SaveEffectsFile();
     void MarkEffectsFileDirty() { UnsavedRgbEffectsChanges=true; }
     void CheckUnsavedChanges();
@@ -838,7 +846,7 @@ private:
     wxStaticText* StaticTextShowEnd;
     wxButton* Button_papagayo_output_sequence;
     wxMenuItem* MenuItemGridNodeValuesOn;
-    wxMenu* MenuItem15;
+    wxMenu* MenuItemPerspectives;
     wxMenu* Menu3;
     wxStaticText* StaticText26;
     wxTextCtrl* TextCtrlLog;
