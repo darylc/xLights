@@ -1442,6 +1442,13 @@ void xLightsFrame::LoadPerspective(wxXmlNode *perspective) {
             MenuItemEffectAssistAlwaysOn->Check(false);
         }
     }
+
+    for (int i=0;i<10;i++) {
+        if (perspectives[i].p == perspective) {
+            MenuItemPerspectives->Check(perspectives[i].id,true);
+        }
+    }
+
 }
 
 void xLightsFrame::LoadPerspective(wxCommandEvent& event)
@@ -1468,6 +1475,7 @@ void xLightsFrame::OnMenuItemViewSavePerspectiveSelected(wxCommandEvent& event)
 
 void xLightsFrame::PerspectivesChanged(wxCommandEvent& event)
 {
+    LoadPerspectivesMenu(PerspectivesNode);
     UnsavedRgbEffectsChanges = true;
 }
 
