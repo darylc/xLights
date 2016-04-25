@@ -675,7 +675,7 @@ public:
         
         bool useAA = USEAA;
         if (size <= 12)  {
-            //useAA = false;
+            useAA = false;
         }
 
         wxGraphicsContext *ctx = wxGraphicsContext::Create();
@@ -808,9 +808,30 @@ public:
         
          //used to output data that can be used to static generation above
         /*
-        wxString fn = wxString::Format("/tmp/font_%d.xpm", size);
-        cimg.SaveFile(fn, wxBITMAP_TYPE_XPM);
+        wxString fn = wxString::Format("/tmp/font_%d.png", size);
+        cimg.SaveFile(fn, wxBITMAP_TYPE_PNG);
         printf("#include \"font_%d.xpm\"\n", size);
+        if (size == 10) {
+            widths['b' - ' '] += 0.5;
+            widths['o' - ' '] += 0.5;
+            widths['p' - ' '] += 0.5;
+            widths['w' - ' '] += 0.5;
+            widths['x' - ' '] += 0.75;
+            widths['y' - ' '] += 0.75;
+            widths['m' - ' '] -= 0.75;
+            widths['A' - ' '] += 0.75;
+            widths['C' - ' '] -= 0.5;
+            widths['W' - ' '] += 0.5;
+            widths['P' - ' '] += 0.5;
+            widths['|' - ' '] -= 0.5;
+        }
+        if (size == 12) {
+            widths['p' - ' '] += 0.5;
+            widths['w' - ' '] += 0.75;
+            widths['m' - ' '] -= 0.5;
+            widths['e' - ' '] -= 0.5;
+            widths['t' - ' '] += 0.5;
+        }
         printf("static FontInfoStruct font%d(font_%d_xpm, %f, %f, %f, {\n", size, size, maxH, maxW, maxD);
         printf("%f", widths[0]);
         for (int x = 1; x < widths.size(); x++) {
@@ -818,6 +839,7 @@ public:
         }
         printf("});\n");
         */
+        
         
         InitializeImage(cimg);
     }
@@ -875,6 +897,7 @@ public:
                 x -= 0.25/factor;
                 x2 += 0.25/factor;
                 
+                /*
                 if (ch == '1') {
                     DrawGLUtils::DrawFillRectangle(xlWHITE, 255,x,y, image.textureWidth / factor, image.textureHeight / factor);
                     
@@ -886,7 +909,7 @@ public:
                     x2 = x + (float)(image.textureWidth)/ factor;
                     y2 = yBase;
                 }
-                
+                */
                 //printf("%c   %f %f    %f %f\n", ch, tx, tx2, ty, ty2);
                 
                 va.AddVertex(x, y, tx, ty);
@@ -897,7 +920,6 @@ public:
                 va.AddVertex(x, y, tx, ty);
 
                 x += widths[ch - ' '] / factor;
-                x += 0.5 / factor;
             }
         }
 
@@ -915,7 +937,7 @@ public:
         for (int idx = 0; idx < text.Length(); idx++) {
             char ch = text[idx];
             if (ch >= ' ' && ch <= '~') {
-                w += widths[ch - ' '] + 0.5;
+                w += widths[ch - ' '];
             }
         }
         return w / factor;
