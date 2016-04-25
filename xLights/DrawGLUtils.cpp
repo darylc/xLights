@@ -4,16 +4,12 @@
 
 
 #ifdef __WXMAC__
- #include "OpenGL/glu.h"
  #include "OpenGL/gl.h"
- #include "GLUT/glut.h"
 #else
 	#ifdef _MSC_VER
 		#include "GL/glut.h"
 	#else
-		#include <GL/glu.h>
 		#include <GL/gl.h>
-		#include <GL/glut.h>
 	#endif
 #endif
 

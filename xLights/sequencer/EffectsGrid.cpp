@@ -6,16 +6,12 @@
 #include "wx/sizer.h"
 #include "wx/glcanvas.h"
 #ifdef __WXMAC__
- #include "OpenGL/glu.h"
  #include "OpenGL/gl.h"
- #include <GLUT/glut.h>
 #else
- #include <GL/glu.h>
  #ifdef _MSC_VER
   #include "../GL/glut.h"
  #else
   #include <GL/gl.h>
-  #include <GL/glut.h>
  #endif
 #endif
 

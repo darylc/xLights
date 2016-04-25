@@ -8,8 +8,6 @@
 #ifdef __WXMAC__
 #include "OpenGL/gl3.h"
 #define __gl_h_
-#include "OpenGL/glu.h"
-#include "GLUT/glut.h"
 #else
 
 #include "wx/wx.h"
@@ -19,9 +17,7 @@
 #else
 #define GL_GLEXT_PROTOTYPES
 #include <GL/glcorearb.h>
-#include <GL/glu.h>
 #include <GL/gl.h>
-#include <GL/glut.h>
 #endif
 #endif
 

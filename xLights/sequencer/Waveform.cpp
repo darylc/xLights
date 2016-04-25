@@ -3,17 +3,13 @@
 #include "wx/wx.h"
 
 #ifdef __WXMAC__
- #include "OpenGL/glu.h"
  #include "OpenGL/gl.h"
 #else
-// #define GLEW_STATIC
 #ifdef _MSC_VER
 #include "../GL/glut.h"
 #else
-#include <GL/glu.h>
 #include <GL/gl.h>
 #endif
-// #include <GL/glext.h>
 #endif
 
 #include "wx/sizer.h"
