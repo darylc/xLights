@@ -180,7 +180,7 @@ DrawGLUtils::xlGLCacheInfo *DrawGLUtils::CreateCache() {
     if (str[0] >= '3') {
         ret = Create31Cache();
     }
-    if (str[0] == '2') {
+    if (ret == nullptr && str[0] == '2') {
         //ret = Create21Cache();
     }
     if (ret == nullptr) {

@@ -24,7 +24,6 @@
 #include <DrawGLUtils.h>
 #include <stack>
 
-
 #ifdef __WXMAC__
 
 class OpenGL31Cache : public DrawGLUtils::xlGLCacheInfo {
@@ -82,6 +81,8 @@ public:
             "out vec4 color;\n"
             "uniform sampler2D tex;\n"
             "uniform int RenderType;\n"
+            "uniform float PointSmoothMin = 0.4;\n"
+            "uniform float PointSmoothMax = 0.5;\n"
             "void main(){\n"
             "    if (RenderType == -1) {\n"
             "        vec4 c = texture(tex, UV);\n"
@@ -89,10 +90,11 @@ public:
             "    } else if (RenderType == 0 || RenderType == -2) {\n"
             "        color = fragmentColor;\n"
             "    } else {\n"
-            "        vec2 dv = abs(gl_PointCoord - vec2(0.5, 0.5));\n "
-            "        float dist = distance(dv, vec2(0,0));\n"
-            "        float alpha = smoothstep(0.25, 0.6, dist);\n"
-            "        color = vec4(fragmentColor.x, fragmentColor.y, fragmentColor.z, 1.0 - alpha);\n"
+            "        float dist = distance(gl_PointCoord, vec2(0.5));\n"
+            "        float alpha = 1.0 - smoothstep(PointSmoothMin, PointSmoothMax, dist);\n"
+            "        if (alpha == 0.0) discard;\n"
+            "        alpha = alpha * fragmentColor.a;\n"
+            "        color = vec4(fragmentColor.rgb, alpha);\n"
             "    }\n"
             "}\n";
 
@@ -131,6 +133,8 @@ public:
         glBindVertexArray(VertexArrayID);
         MatrixID = glGetUniformLocation(ProgramID, "MVP");
         RenderTypeID = glGetUniformLocation(ProgramID, "RenderType");
+        PointSmoothMinID = glGetUniformLocation(ProgramID, "PointSmoothMin");
+        PointSmoothMaxID = glGetUniformLocation(ProgramID, "PointSmoothMax");
         glUniform1i(glGetUniformLocation(ProgramID, "tex"), 0);
 
         glEnableVertexAttribArray(0);
@@ -222,6 +226,23 @@ public:
         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void*)0 );
         glEnableVertexAttribArray(1);
     }
+    float CalcSmoothPointParams() {
+        float ps;
+        glGetFloatv(GL_POINT_SIZE, &ps);
+        glPointSize(ps+1);
+        float delta = 1.0 / (ps+1);
+        float mid = 0.35 + 0.15 * ((ps - 1.0f)/25.0f);
+        if (mid > 0.5) {
+            mid = 0.5;
+        }
+        
+        float min = std::max(0.0f, mid - delta);
+        float max = std::min(1.0f, mid + delta);
+        glUniform1f(PointSmoothMinID, min);
+        glUniform1f(PointSmoothMaxID, max);
+        return ps;
+    }
+    
     void Draw(DrawGLUtils::xlVertexColorAccumulator &va, int type, int enableCapability) override {
         glBindBuffer(GL_ARRAY_BUFFER, vBuffer);
         glBufferData(GL_ARRAY_BUFFER, va.count*2*sizeof(GLfloat), &va.vertices[0], GL_DYNAMIC_DRAW);
@@ -232,12 +253,11 @@ public:
         glBufferData(GL_ARRAY_BUFFER, va.count*4*sizeof(GLubyte), &va.colors[0], GL_DYNAMIC_DRAW);
         glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, (void*)0 );
 
-        float ps;
+        float ps = 2.0;
         if (type == GL_POINTS && enableCapability == 0x0B10) {
             //POINT_SMOOTH, removed in OpenGL3.x
-            glGetFloatv(GL_POINT_SIZE, &ps);
-            glPointSize(ps + 1.0); //need a little larger for the blending
             glUniform1i(RenderTypeID, 1);
+            ps = CalcSmoothPointParams();
         } else {
             if (enableCapability > 0) {
                 glEnable(enableCapability);
@@ -247,8 +267,8 @@ public:
         }
         glDrawArrays(type, 0, va.count);
         if (type == GL_POINTS && enableCapability == 0x0B10) {
-            glPointSize(ps);
             glUniform1i(RenderTypeID, 0);
+            glPointSize(ps);
         } else if (enableCapability > 0) {
             glDisable(enableCapability);
         } else if (enableCapability != 0) {
@@ -334,8 +354,7 @@ public:
         float ps;
         if (type == GL_POINTS && enableCapability == 0x0B10) {
             //POINT_SMOOTH, removed in OpenGL3.x
-            glGetFloatv(GL_POINT_SIZE, &ps);
-            glPointSize(ps + 1.0); //need a little larger for the blending
+            ps = CalcSmoothPointParams();
             glUniform1i(RenderTypeID, 1);
         } else {
             if (enableCapability > 0) {
@@ -601,6 +620,8 @@ protected:
     GLuint MatrixID;
     GLuint TextureID;
     GLuint RenderTypeID;
+    GLuint PointSmoothMinID;
+    GLuint PointSmoothMaxID;
 
     GLuint ProgramID;
     GLuint VertexArrayID;
